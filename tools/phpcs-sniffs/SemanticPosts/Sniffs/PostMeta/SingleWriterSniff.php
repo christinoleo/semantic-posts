@@ -32,16 +32,19 @@ class SingleWriterSniff implements Sniff {
 	);
 
 	/**
-	 * Map of meta key (string literal) to the single class allowed to write it.
+	 * Map of meta key (string literal) to allowed owner classes. Multiple owners
+	 * are accepted to reflect that AR-10 names a *subsystem* — e.g. _sp_related
+	 * is owned by the Crawler subsystem, whose surface is exposed via NeighborStore
+	 * (storage) in TB-07 and the Crawler walker (TB-08).
 	 *
-	 * @var array<string,string>
+	 * @var array<string,string[]>
 	 */
 	private const OWNERS = array(
-		'_sp_embedding' => 'Vector',
-		'_sp_related'   => 'Crawler',
-		'_sp_inbound'   => 'Crawler',
-		'_sp_text_hash' => 'HashDiffDetector',
-		'_sp_dirty'     => 'HashDiffDetector',
+		'_sp_embedding' => array( 'Vector' ),
+		'_sp_related'   => array( 'Crawler', 'NeighborStore' ),
+		'_sp_inbound'   => array( 'Crawler', 'NeighborStore' ),
+		'_sp_text_hash' => array( 'HashDiffDetector' ),
+		'_sp_dirty'     => array( 'HashDiffDetector' ),
 	);
 
 	/**
@@ -99,14 +102,14 @@ class SingleWriterSniff implements Sniff {
 		}
 
 		$enclosing_class = $this->find_enclosing_class_name( $phpcs_file, $stack_ptr );
-		$expected_owner  = self::OWNERS[ $meta_key ];
+		$allowed_owners  = self::OWNERS[ $meta_key ];
 
-		if ( $enclosing_class !== $expected_owner ) {
+		if ( ! in_array( $enclosing_class, $allowed_owners, true ) ) {
 			$phpcs_file->addError(
 				sprintf(
 					'AR-10 violation: postmeta key "%s" may only be written by class %s, but write occurred in %s.',
 					$meta_key,
-					$expected_owner,
+					implode( ' or ', $allowed_owners ),
 					( '' === $enclosing_class ) ? 'global scope' : $enclosing_class
 				),
 				$stack_ptr,

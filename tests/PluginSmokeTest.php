@@ -34,6 +34,7 @@ final class PluginSmokeTest extends TestCase {
 			static fn( string $file ): string => 'semantic-posts/semantic-posts.php'
 		);
 		Functions\when( 'register_activation_hook' )->justReturn( null );
+		Functions\when( 'register_deactivation_hook' )->justReturn( null );
 		Functions\when( 'add_action' )->justReturn( null );
 		Functions\when( 'add_filter' )->justReturn( null );
 		Functions\when( 'add_shortcode' )->justReturn( null );

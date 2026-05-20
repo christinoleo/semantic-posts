@@ -37,6 +37,18 @@ register_activation_hook(
 				array( 'back_link' => true )
 			);
 		}
+		if ( class_exists( \SemanticPosts\Indexing\CronRegistration::class ) ) {
+			\SemanticPosts\Indexing\CronRegistration::activate();
+		}
+	}
+);
+
+register_deactivation_hook(
+	__FILE__,
+	static function () {
+		if ( class_exists( \SemanticPosts\Indexing\CronRegistration::class ) ) {
+			\SemanticPosts\Indexing\CronRegistration::deactivate();
+		}
 	}
 );
 
