@@ -20,6 +20,7 @@ declare( strict_types=1 );
 
 namespace SemanticPosts\Indexing;
 
+use SemanticPosts\Crawler\Crawler;
 use SemanticPosts\Embeddings\Exception\FatalException;
 use SemanticPosts\Embeddings\Exception\RetryableException;
 use SemanticPosts\Embeddings\IndexableTextBuilder;
@@ -55,25 +56,31 @@ class EmbedJob {
 	/** @var StateRepository */
 	private StateRepository $state;
 
+	/** @var Crawler|null Optional graph-update step run after a successful embed. */
+	private ?Crawler $crawler;
+
 	/**
 	 * @param Provider             $provider     Embedding provider (OpenAIProvider in v1).
 	 * @param IndexableTextBuilder $builder      ADR-0001 text composer.
 	 * @param RateLimiter          $rate_limiter Shared per-tick rate limiter.
 	 * @param HashDiffDetector     $hash         AR-10 owner of _sp_text_hash + _sp_dirty.
 	 * @param StateRepository      $state        AR-* owner of _sp_state (metrics + failed list).
+	 * @param Crawler|null         $crawler      Optional graph-update step (TB-08). Null in unit tests that don't exercise the crawler.
 	 */
 	public function __construct(
 		Provider $provider,
 		IndexableTextBuilder $builder,
 		RateLimiter $rate_limiter,
 		HashDiffDetector $hash,
-		StateRepository $state
+		StateRepository $state,
+		?Crawler $crawler = null
 	) {
 		$this->provider     = $provider;
 		$this->builder      = $builder;
 		$this->rate_limiter = $rate_limiter;
 		$this->hash         = $hash;
 		$this->state        = $state;
+		$this->crawler      = $crawler;
 	}
 
 	/**
@@ -129,6 +136,10 @@ class EmbedJob {
 		$this->hash->write_hash( $post->ID, $hash );
 		$this->hash->clear_dirty( $post->ID );
 		$this->state->record_success();
+
+		if ( null !== $this->crawler ) {
+			$this->crawler->update( $post->ID );
+		}
 
 		return array( 'outcome' => self::OUTCOME_SUCCESS );
 	}
