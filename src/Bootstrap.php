@@ -51,6 +51,7 @@ use SemanticPosts\Verification\DriftNotice;
 use SemanticPosts\Verification\VerificationPass;
 use SemanticPosts\Embeddings\Vector;
 use SemanticPosts\CLI\Commands as CliCommands;
+use SemanticPosts\Updater\GitHubUpdater;
 
 /**
  * Plugin Bootstrap. See file header for the single-owner invariant.
@@ -201,6 +202,19 @@ final class Bootstrap {
 		add_action( 'wp_ajax_' . AjaxHandler::ACTION_RUN_INDEXING_NOW, array( $ajax, 'handle_run_indexing_now' ) );
 		add_action( 'wp_ajax_' . AjaxHandler::ACTION_RETRY_FAILED, array( $ajax, 'handle_retry_failed' ) );
 		add_action( 'wp_ajax_' . AjaxHandler::ACTION_RUN_VERIFICATION_NOW, array( $ajax, 'handle_run_verification_now' ) );
+
+		// TB-21: GitHub-releases auto-updater (admin context only — never on
+		// the public-facing path).
+		if ( is_admin() ) {
+			$updater = new GitHubUpdater(
+				SEMANTIC_POSTS_FILE,
+				SEMANTIC_POSTS_VERSION,
+				'christinoleo',
+				'semantic-posts'
+			);
+			add_filter( 'pre_set_site_transient_update_plugins', array( $updater, 'check_for_update' ) );
+			add_filter( 'plugins_api', array( $updater, 'plugins_api' ), 10, 3 );
+		}
 
 		// TB-15: WP-CLI surface (registered only when running under WP-CLI).
 		if ( defined( 'WP_CLI' ) && constant( 'WP_CLI' ) && class_exists( '\\WP_CLI' ) ) {

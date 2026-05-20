@@ -3,20 +3,21 @@
  * Plugin Name:       SemanticPosts
  * Plugin URI:        https://github.com/christinoleo/semantic-posts
  * Description:       Related posts via semantic embeddings. Precomputed at index time, served from postmeta cache.
- * Version:           0.1.1
+ * Version:           0.1.2
  * Requires at least: 6.0
  * Requires PHP:      8.0
  * Author:            Leonardo Christino
  * License:           GPL-2.0-or-later
  * License URI:       https://www.gnu.org/licenses/gpl-2.0.html
  * Text Domain:       semantic-posts
+ * Update URI:        https://github.com/christinoleo/semantic-posts
  *
  * @package SemanticPosts
  */
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'SEMANTIC_POSTS_VERSION', '0.1.1' );
+define( 'SEMANTIC_POSTS_VERSION', '0.1.2' );
 define( 'SEMANTIC_POSTS_DIR', plugin_dir_path( __FILE__ ) );
 define( 'SEMANTIC_POSTS_URL', plugin_dir_url( __FILE__ ) );
 define( 'SEMANTIC_POSTS_FILE', __FILE__ );

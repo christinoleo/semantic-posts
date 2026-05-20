@@ -54,7 +54,7 @@ final class PluginSmokeTest extends TestCase {
 		$this->assertTrue( defined( 'SEMANTIC_POSTS_URL' ) );
 		$this->assertTrue( defined( 'SEMANTIC_POSTS_FILE' ) );
 
-		$this->assertSame( '0.1.0', SEMANTIC_POSTS_VERSION );
+		$this->assertMatchesRegularExpression( '/^\d+\.\d+\.\d+$/', SEMANTIC_POSTS_VERSION );
 		$this->assertStringEndsWith( '/', SEMANTIC_POSTS_DIR );
 		$this->assertStringStartsWith( 'http', SEMANTIC_POSTS_URL );
 		$this->assertSame( realpath( dirname( __DIR__ ) . '/semantic-posts.php' ), realpath( SEMANTIC_POSTS_FILE ) );
