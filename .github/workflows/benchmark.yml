@@ -1,0 +1,70 @@
+name: Benchmark
+
+on:
+  schedule:
+    - cron: '15 4 * * *'  # Nightly 04:15 UTC.
+  workflow_dispatch:
+  # NOTE: not wired to `push` / `pull_request`. The benchmark needs the
+  # Reference env Docker fixture + a seeded 5k-post corpus, which exceeds the
+  # PR-feedback budget. Run manually via `gh workflow run benchmark.yml` to
+  # validate a branch before nightly.
+
+permissions:
+  contents: read
+
+concurrency:
+  group: benchmark-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  benchmark:
+    name: Benchmark (${{ matrix.variant }})
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        variant:
+          - default
+          - redis
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.0'
+          coverage: none
+          tools: composer:v2
+
+      - name: Composer install
+        run: composer install --prefer-dist --no-progress --no-interaction --no-dev
+
+      - name: Boot Docker fixture
+        env:
+          BENCH_REDIS: ${{ matrix.variant == 'redis' && '1' || '0' }}
+        run: |
+          docker compose up -d --wait
+
+      - name: Run benchmark
+        env:
+          BENCH_POST_COUNT: 5000
+          BENCH_REDIS: ${{ matrix.variant == 'redis' && '1' || '0' }}
+          BENCH_COMMIT_SHA: ${{ github.sha }}
+          BENCH_ENVIRONMENT: 'ubuntu-24.04 / php8.0 / mysql8.0 / ${{ matrix.variant }}'
+        run: |
+          bash tools/benchmark/run.sh
+
+      - name: Upload result
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: benchmark-${{ matrix.variant }}-${{ github.sha }}
+          path: benchmark.json
+          if-no-files-found: warn
+          retention-days: 30
+
+      - name: Fail job on regression
+        if: failure()
+        run: |
+          echo "::error::Benchmark regression detected (see benchmark.json artifact)."
