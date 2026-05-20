@@ -1,4 +1,4 @@
-/* SemanticPosts admin settings — vanilla JS (AR-14: no jQuery). */
+/* SemanticPosts admin settings — vanilla JS (AR-14: no jq). */
 ( function () {
 	'use strict';
 
