@@ -86,15 +86,18 @@ class EmbedJob {
 	/**
 	 * Run the job for one post.
 	 *
-	 * @param  WP_Post $post    Target post.
-	 * @param  int     $attempt 1-indexed attempt number from the caller's queue.
+	 * @param  WP_Post $post             Target post.
+	 * @param  int     $attempt          1-indexed attempt number from the caller's queue.
+	 * @param  bool    $skip_warm_graph  When true (cold-start path), skip the
+	 *                                   warm Crawler::update call so the caller can
+	 *                                   run Crawler::insert (ADR-0008) instead.
 	 * @return array{outcome: string, retry_after_seconds?: int}
 	 *
 	 *   On RETRY the result contains `retry_after_seconds = 2^attempt`. Caller
 	 *   schedules the next attempt that far in the future. On SUCCESS or FAILED
 	 *   there is no retry — the queue entry is consumed.
 	 */
-	public function run( WP_Post $post, int $attempt = 1 ): array {
+	public function run( WP_Post $post, int $attempt = 1, bool $skip_warm_graph = false ): array {
 		$text = $this->builder->build( $post );
 		$hash = md5( $text );
 
@@ -137,7 +140,7 @@ class EmbedJob {
 		$this->hash->clear_dirty( $post->ID );
 		$this->state->record_success();
 
-		if ( null !== $this->crawler ) {
+		if ( null !== $this->crawler && ! $skip_warm_graph ) {
 			$this->crawler->update( $post->ID );
 		}
 

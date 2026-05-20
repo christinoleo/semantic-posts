@@ -50,21 +50,52 @@ class Crawler {
 	 */
 	public const SOFT_BUDGET = 200;
 
+	/**
+	 * Bootstrap threshold per ADR-0008. Up to N_b already-indexed posts: insert
+	 * runs brute-force pairwise. Beyond: greedy graph walk.
+	 */
+	public const PHASE_1_LIMIT = 200;
+
+	/**
+	 * Per-insert visit budget for the Phase-2 walk (ADR-0008 B_v).
+	 */
+	public const VISIT_BUDGET = 300;
+
+	/**
+	 * Number of random entry points per Phase-2 walk (ADR-0008 L).
+	 */
+	public const ENTRY_POINTS = 5;
+
 	/** @var NeighborStore */
 	private NeighborStore $neighbors;
 
 	/** @var callable():int[] */
 	private $random_sampler;
 
+	/** @var callable():int[]|null Test seam for "list every already-indexed post". */
+	private $indexed_lister;
+
+	/** @var int Phase-1 threshold; overridable for tests. */
+	private int $phase_1_limit;
+
 	/**
 	 * @param NeighborStore         $neighbors      Graph storage.
 	 * @param callable():int[]|null $random_sampler Override the random-sample source (test seam).
+	 * @param callable():int[]|null $indexed_lister Override the "list every indexed post" query (test seam).
+	 * @param int|null              $phase_1_limit  Override N_b for tests (defaults to PHASE_1_LIMIT).
 	 */
-	public function __construct( NeighborStore $neighbors, ?callable $random_sampler = null ) {
+	public function __construct(
+		NeighborStore $neighbors,
+		?callable $random_sampler = null,
+		?callable $indexed_lister = null,
+		?int $phase_1_limit = null
+	) {
 		$this->neighbors      = $neighbors;
 		$this->random_sampler = $random_sampler ?? function (): array {
 			return $this->default_random_sample();
 		};
+		$this->indexed_lister = $indexed_lister;
+		$this->phase_1_limit  = $phase_1_limit ?? self::PHASE_1_LIMIT;
 	}
 
 	/**
@@ -159,6 +190,204 @@ class Crawler {
 		}
 
 		return $ops;
+	}
+
+	/**
+	 * Cold-start entry point. Per ADR-0008:
+	 *   - Phase 1 (already-indexed ≤ N_b=200): brute-force pairwise scoring.
+	 *   - Phase 2 (> N_b): greedy graph walk from L=5 random entry points,
+	 *     B_v=300 visit budget, top-K heap.
+	 *
+	 * Returns cosine op count for telemetry / tests.
+	 *
+	 * @param int $post_id Newly-embedded post to insert into the graph.
+	 */
+	public function insert( int $post_id ): int {
+		$source_emb = $this->load_embedding( $post_id );
+		if ( null === $source_emb ) {
+			return 0;
+		}
+
+		$indexed = $this->list_indexed_excluding( $post_id );
+		if ( count( $indexed ) <= $this->phase_1_limit ) {
+			return $this->insert_phase_1( $post_id, $source_emb, $indexed );
+		}
+		return $this->insert_phase_2( $post_id, $source_emb, $indexed );
+	}
+
+	/**
+	 * Brute-force pairwise scoring against every already-indexed post.
+	 *
+	 * @param int                      $post_id    Source post.
+	 * @param SplFixedArray<int,float> $source_emb Decoded source vector.
+	 * @param int[]                    $indexed    Already-indexed post IDs (excluding source).
+	 */
+	private function insert_phase_1( int $post_id, SplFixedArray $source_emb, array $indexed ): int {
+		$candidates = $this->apply_language_filter( $post_id, $indexed );
+
+		$ops    = 0;
+		$scored = array();
+		foreach ( $candidates as $cand_id ) {
+			$emb = $this->load_embedding( $cand_id );
+			if ( null === $emb || $emb->getSize() !== $source_emb->getSize() ) {
+				continue;
+			}
+			$scored[ $cand_id ] = Vector::dot( $source_emb, $emb );
+			++$ops;
+		}
+
+		arsort( $scored, SORT_NUMERIC );
+		$top_k = array_slice( $scored, 0, self::TOP_K, true );
+		$this->persist_initial_top_k( $post_id, $top_k );
+		return $ops;
+	}
+
+	/**
+	 * Greedy BFS walk over the existing graph, scoring up to B_v=300 nodes.
+	 *
+	 * Simple BFS variant (no edge-weight-based pre-prioritisation) — keeps the
+	 * implementation small. Future work (recorded in ADR-0008): use the visited
+	 * neighbor's edge-weight as a proxy to terminate walks early when no
+	 * frontier candidate can beat the current heap minimum.
+	 *
+	 * @param int                      $post_id    Source post.
+	 * @param SplFixedArray<int,float> $source_emb Decoded source vector.
+	 * @param int[]                    $indexed    Already-indexed post IDs.
+	 */
+	private function insert_phase_2( int $post_id, SplFixedArray $source_emb, array $indexed ): int {
+		$entries = $this->pick_entry_points( $indexed, self::ENTRY_POINTS );
+
+		$ops      = 0;
+		$visited  = array();
+		$frontier = array_fill_keys( $entries, true );
+		$heap     = array();
+
+		while ( $ops < self::VISIT_BUDGET && ! empty( $frontier ) ) {
+			$current = (int) array_key_first( $frontier );
+			unset( $frontier[ $current ] );
+			if ( isset( $visited[ $current ] ) ) {
+				continue;
+			}
+
+			$emb = $this->load_embedding( $current );
+			if ( null === $emb || $emb->getSize() !== $source_emb->getSize() ) {
+				$visited[ $current ] = true;
+				continue;
+			}
+			$score = Vector::dot( $source_emb, $emb );
+			++$ops;
+			$visited[ $current ] = true;
+
+			$heap[ $current ] = $score;
+			arsort( $heap, SORT_NUMERIC );
+			$heap = array_slice( $heap, 0, self::TOP_K, true );
+
+			$related = $this->neighbors->read_related( $current );
+			$inbound = $this->neighbors->read_inbound( $current );
+			foreach ( array_merge( array_keys( $related ), $inbound ) as $nid ) {
+				$nid = (int) $nid;
+				if ( $nid === $post_id || isset( $visited[ $nid ] ) ) {
+					continue;
+				}
+				$frontier[ $nid ] = true;
+			}
+		}
+
+		$this->persist_initial_top_k( $post_id, $heap );
+		return $ops;
+	}
+
+	/**
+	 * Write source's new top-K and add inbound mirrors. Mirrors the warm-path
+	 * step but skips the propagation pass (cold-start posts have no prior
+	 * neighbors, and Phase 2 walks already touched the neighborhood).
+	 *
+	 * @param int              $post_id Source post.
+	 * @param array<int,float> $top_k   Top-K map.
+	 */
+	private function persist_initial_top_k( int $post_id, array $top_k ): void {
+		$this->neighbors->write_related( $post_id, $top_k );
+		foreach ( array_keys( $top_k ) as $nid ) {
+			$this->neighbors->add_inbound( (int) $nid, $post_id );
+		}
+	}
+
+	/**
+	 * Pick up to $count random entry points from the indexed set.
+	 *
+	 * @param  int[] $indexed Already-indexed post IDs.
+	 * @param  int   $count   Desired entry-point count.
+	 * @return int[]
+	 */
+	private function pick_entry_points( array $indexed, int $count ): array {
+		if ( count( $indexed ) <= $count ) {
+			return $indexed;
+		}
+		$keys = array_rand( $indexed, $count );
+		$out  = array();
+		foreach ( (array) $keys as $k ) {
+			$out[] = (int) $indexed[ $k ];
+		}
+		return $out;
+	}
+
+	/**
+	 * Total number of posts with an `_sp_embedding`. Public so ColdStartProcessor
+	 * (and TB-13 observability) can check phase transitions cheaply.
+	 */
+	public function indexed_count(): int {
+		return count( $this->list_indexed_excluding( 0 ) );
+	}
+
+	/**
+	 * List every post that currently has an `_sp_embedding`, excluding source.
+	 *
+	 * @param  int $post_id Source post.
+	 * @return int[]
+	 */
+	private function list_indexed_excluding( int $post_id ): array {
+		if ( null !== $this->indexed_lister ) {
+			$all = ( $this->indexed_lister )();
+		} else {
+			$all = $this->default_indexed_lister();
+		}
+		return array_values(
+			array_filter(
+				array_map( 'intval', $all ),
+				static fn( $id ) => $id !== $post_id
+			)
+		);
+	}
+
+	/**
+	 * Default lister — every post with an `_sp_embedding`. Production-only;
+	 * tests inject a sampler.
+	 *
+	 * @return int[]
+	 */
+	private function default_indexed_lister(): array {
+		if ( ! class_exists( '\\WP_Query' ) ) {
+			return array();
+		}
+		$query = new \WP_Query(
+			array(
+				'post_type'              => 'any',
+				'post_status'            => 'publish',
+				'has_password'           => false,
+				'posts_per_page'         => -1,
+				'fields'                 => 'ids',
+				'no_found_rows'          => true,
+				'update_post_meta_cache' => false,
+				'update_post_term_cache' => false,
+				'meta_query'             => array( // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_query
+					array(
+						'key'     => Vector::POSTMETA_KEY,
+						'compare' => 'EXISTS',
+					),
+				),
+			)
+		);
+		return array_map( 'intval', (array) $query->posts );
 	}
 
 	/**

@@ -67,7 +67,7 @@
     <!-- Squiz inline-type-hint sniff doesn't understand generics syntax.
          Type info is documented in @param docblocks; runtime type is the class name. -->
     <rule ref="Squiz.Commenting.FunctionComment.IncorrectTypeHint">
-        <exclude-pattern>src/Embeddings/Vector.php</exclude-pattern>
+        <exclude-pattern>src/*</exclude-pattern>
     </rule>
 
     <!-- File-level docblock headers describe each class's responsibility.
