@@ -11,6 +11,13 @@
 
 declare( strict_types=1 );
 
+// Plugin class files include a `defined( 'ABSPATH' ) || exit;` guard for
+// `wp plugin check`. Define ABSPATH here so autoloading those classes during
+// PHPUnit doesn't short-circuit.
+if ( ! defined( 'ABSPATH' ) ) {
+	define( 'ABSPATH', dirname( __DIR__ ) . '/' );
+}
+
 $autoload = dirname( __DIR__ ) . '/vendor/autoload.php';
 if ( ! file_exists( $autoload ) ) {
 	fwrite( STDERR, "vendor/autoload.php missing — run `composer install` first.\n" );

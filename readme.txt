@@ -2,7 +2,7 @@
 Contributors: christinoleo
 Tags: related posts, embeddings, openai, semantic search, recommendations
 Requires at least: 6.0
-Tested up to: 6.6
+Tested up to: 7.0
 Requires PHP: 8.0
 Stable tag: 0.1.0
 License: GPLv2 or later
