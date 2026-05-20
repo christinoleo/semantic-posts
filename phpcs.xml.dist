@@ -70,6 +70,20 @@
         <exclude-pattern>src/Embeddings/Vector.php</exclude-pattern>
     </rule>
 
+    <!-- File-level docblock headers describe each class's responsibility.
+         A separate `/** Short desc */` immediately above the class is ceremony
+         that drifts; the file header is the single source of truth. Same logic
+         for "missing short description" / capitalisation on @param-only blocks. -->
+    <rule ref="Squiz.Commenting.ClassComment.Missing">
+        <exclude-pattern>src/*</exclude-pattern>
+    </rule>
+    <rule ref="Generic.Commenting.DocComment.MissingShort">
+        <exclude-pattern>src/*</exclude-pattern>
+    </rule>
+    <rule ref="Generic.Commenting.DocComment.ShortNotCapital">
+        <exclude-pattern>src/*</exclude-pattern>
+    </rule>
+
     <!-- AR-10 + AR-12 sniffs apply to the entire repo to catch any code path. -->
     <rule ref="./tools/phpcs-sniffs/SemanticPosts/ruleset.xml"/>
 </ruleset>

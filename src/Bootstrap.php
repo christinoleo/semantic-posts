@@ -12,6 +12,13 @@ declare( strict_types=1 );
 
 namespace SemanticPosts;
 
+use SemanticPosts\Render\ContentFilter;
+use SemanticPosts\Render\Renderer;
+use SemanticPosts\Render\Shortcode;
+use SemanticPosts\Render\SourceResolver;
+use SemanticPosts\Settings\SettingsPage;
+use SemanticPosts\Settings\SettingsRepository;
+
 /**
  * Plugin Bootstrap. See file header for the single-owner invariant.
  */
@@ -55,7 +62,18 @@ final class Bootstrap {
 
 		add_action( 'init', array( $this, 'load_textdomain' ) );
 
-		// Subsequent slices (TB-05+) extend this with embedding/crawler/render hooks.
+		$settings  = new SettingsRepository();
+		$resolver  = new SourceResolver();
+		$renderer  = new Renderer( $resolver );
+		$shortcode = new Shortcode( $renderer );
+		$content   = new ContentFilter( $renderer, $shortcode, $settings );
+		$page      = new SettingsPage( $settings );
+
+		add_action( 'admin_menu', array( $page, 'register_menu' ) );
+		add_filter( 'the_content', array( $content, 'maybe_append' ), 20 );
+		add_shortcode( Shortcode::TAG, array( $shortcode, 'render' ) );
+
+		// Subsequent slices (TB-05+) extend this with embedding/crawler hooks.
 	}
 
 	/**
