@@ -21,6 +21,8 @@ use SplFixedArray;
  */
 final class Vector {
 
+	public const POSTMETA_KEY = '_sp_embedding';
+
 	/**
 	 * Pack format: little-endian 32-bit float (`g` per `pack()`).
 	 */
@@ -108,5 +110,26 @@ final class Vector {
 			$sum += $a[ $i ] * $b[ $i ];
 		}
 		return $sum;
+	}
+
+	/**
+	 * Single-writer entry for `_sp_embedding` postmeta. AR-10 invariant — no
+	 * other code in the plugin calls `update_post_meta` with this key.
+	 *
+	 * @param int     $post_id Target post.
+	 * @param float[] $floats  Vector to persist.
+	 */
+	public static function write_embedding( int $post_id, array $floats ): void {
+		update_post_meta( $post_id, '_sp_embedding', self::encode( $floats ) );
+	}
+
+	/**
+	 * Single-writer entry for deleting `_sp_embedding` postmeta. Used by the
+	 * trash / status-away cleanup paths in TB-07.
+	 *
+	 * @param int $post_id Target post.
+	 */
+	public static function delete_embedding( int $post_id ): void {
+		delete_post_meta( $post_id, '_sp_embedding' );
 	}
 }
