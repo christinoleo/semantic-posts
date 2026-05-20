@@ -23,7 +23,7 @@ class RateLimiter {
 	/**
 	 * Minimum gap between adjacent calls, in seconds.
 	 */
-	private const MIN_GAP_SECONDS = 1.0;
+	public const MIN_GAP_SECONDS = 1.0;
 
 	/**
 	 * Returns the current time in seconds (float).

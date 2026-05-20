@@ -31,23 +31,28 @@ final class ObservabilityPanel {
 	private UnindexedQueue $unindexed;
 	/** @var ApiKeyStorage */
 	private ApiKeyStorage $key_storage;
+	/** @var EVRegistry|null */
+	private ?EVRegistry $ev_registry;
 
 	/**
 	 * @param Metrics         $metrics     Read-side metrics for the 24h summary.
 	 * @param StateRepository $state       State repo (used for "indexed total" estimate).
 	 * @param UnindexedQueue  $unindexed   Pending-post queue (banner ratio numerator).
 	 * @param ApiKeyStorage   $key_storage Key store (no-key banner gate).
+	 * @param EVRegistry|null $ev_registry Algorithm-constants registry (TB-16). Optional for back-compat.
 	 */
 	public function __construct(
 		Metrics $metrics,
 		StateRepository $state,
 		UnindexedQueue $unindexed,
-		ApiKeyStorage $key_storage
+		ApiKeyStorage $key_storage,
+		?EVRegistry $ev_registry = null
 	) {
 		$this->metrics     = $metrics;
 		$this->state       = $state;
 		$this->unindexed   = $unindexed;
 		$this->key_storage = $key_storage;
+		$this->ev_registry = $ev_registry;
 	}
 
 	/**
@@ -183,6 +188,33 @@ final class ObservabilityPanel {
 			</ul>
 		<?php endif; ?>
 
+		<?php if ( null !== $this->ev_registry ) : ?>
+			<h3><?php esc_html_e( 'Algorithm constants (EV registry)', 'semantic-posts' ); ?></h3>
+			<p class="description"><?php esc_html_e( 'Read-only mirror of the EV registry from architecture.md. "Source" reflects whether the value is still the default, was filtered at runtime, or is tied to a Setting.', 'semantic-posts' ); ?></p>
+			<table class="widefat fixed striped semantic-posts-ev-registry">
+				<thead>
+					<tr>
+						<th><?php esc_html_e( 'EV', 'semantic-posts' ); ?></th>
+						<th><?php esc_html_e( 'Name', 'semantic-posts' ); ?></th>
+						<th><?php esc_html_e( 'Current', 'semantic-posts' ); ?></th>
+						<th><?php esc_html_e( 'Source', 'semantic-posts' ); ?></th>
+						<th><?php esc_html_e( 'Revisit trigger', 'semantic-posts' ); ?></th>
+					</tr>
+				</thead>
+				<tbody>
+					<?php foreach ( $this->ev_registry->entries() as $row ) : ?>
+						<tr>
+							<td><?php echo esc_html( $row['id'] ); ?></td>
+							<td><?php echo esc_html( $row['name'] ); ?></td>
+							<td><code><?php echo esc_html( $this->format_value( $row['current'] ) ); ?></code></td>
+							<td><?php echo esc_html( $row['source'] ); ?></td>
+							<td><?php echo esc_html( $row['revisit'] ); ?></td>
+						</tr>
+					<?php endforeach; ?>
+				</tbody>
+			</table>
+		<?php endif; ?>
+
 		<h3><?php esc_html_e( 'Maintenance', 'semantic-posts' ); ?></h3>
 		<p>
 			<button type="button" class="button" id="semantic-posts-run-tick-now"><?php esc_html_e( 'Run indexing now', 'semantic-posts' ); ?></button>
@@ -195,6 +227,31 @@ final class ObservabilityPanel {
 	/**
 	 * Conservative estimate of how many posts are already indexed. Used only
 	 * for the graceful-restore banner ratio — exact precision isn't required.
+	 */
+	/**
+	 * Compact a scalar for the EV table.
+	 *
+	 * @param mixed $value Value to render.
+	 */
+	private function format_value( $value ): string {
+		if ( is_bool( $value ) ) {
+			return $value ? 'true' : 'false';
+		}
+		if ( null === $value ) {
+			return '—';
+		}
+		if ( is_float( $value ) ) {
+			return rtrim( rtrim( number_format( $value, 4 ), '0' ), '.' );
+		}
+		if ( is_array( $value ) ) {
+			return wp_json_encode( $value );
+		}
+		return (string) $value;
+	}
+
+	/**
+	 * Conservative count of currently-indexed posts. Denominator for the
+	 * graceful-restore banner ratio — exact precision isn't needed.
 	 */
 	private function indexed_total_estimate(): int {
 		$state   = $this->state->read();

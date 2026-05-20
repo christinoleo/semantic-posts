@@ -30,6 +30,7 @@ use SemanticPosts\Indexing\TickProcessor;
 use SemanticPosts\Indexing\UnindexedQueue;
 use SemanticPosts\Indexing\Wiper;
 use SemanticPosts\Lifecycle\BackupFilter;
+use SemanticPosts\Observability\EVRegistry;
 use SemanticPosts\Observability\ObservabilityPanel;
 use SemanticPosts\Observability\StateMetrics;
 use SemanticPosts\Ranking\ModeFactory;
@@ -154,7 +155,8 @@ final class Bootstrap {
 		$estimator     = new CostEstimator();
 		$key_validator = new ApiKeyValidator();
 		$wiper         = new Wiper( $state );
-		$panel         = new ObservabilityPanel( $metrics, $state, $unindexed_queue, $key_storage );
+		$ev_registry   = new EVRegistry( $settings );
+		$panel         = new ObservabilityPanel( $metrics, $state, $unindexed_queue, $key_storage, $ev_registry );
 		$page          = new SettingsPage( $settings, $key_storage, $panel );
 		$ajax          = new AjaxHandler(
 			$settings,
