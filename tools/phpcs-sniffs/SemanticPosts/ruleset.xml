@@ -1,0 +1,6 @@
+<?xml version="1.0"?>
+<ruleset name="SemanticPosts">
+    <description>Custom architecture sniffs for the SemanticPosts plugin (AR-10, AR-12).</description>
+    <rule ref="SemanticPosts.PostMeta.SingleWriter"/>
+    <rule ref="SemanticPosts.Ajax.NonceCapBoundary"/>
+</ruleset>

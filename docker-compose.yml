@@ -1,0 +1,72 @@
+# Local dev + benchmark fixture matching Reference env (PRD §9.5).
+# Intentionally lean: no opcache tuning, no object cache, default WP-Cron.
+
+services:
+  # NOTE: local dev uses MySQL 8.0 because mysql:5.7 has no ARM64 build.
+  # The Reference env (PRD §9.5) targets MySQL 5.7 — benchmarks must run on
+  # amd64 (e.g. GitHub Actions ubuntu-latest) to match production parity.
+  db:
+    image: mysql:8.0
+    command: --default-authentication-plugin=mysql_native_password
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpass
+      MYSQL_DATABASE: wordpress
+      MYSQL_USER: wordpress
+      MYSQL_PASSWORD: wordpress
+    volumes:
+      - db_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-prootpass"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  wordpress:
+    build:
+      context: ./docker
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      WORDPRESS_DB_HOST: db:3306
+      WORDPRESS_DB_USER: wordpress
+      WORDPRESS_DB_PASSWORD: wordpress
+      WORDPRESS_DB_NAME: wordpress
+      WORDPRESS_DEBUG: "1"
+      WORDPRESS_CONFIG_EXTRA: |
+        define('WP_MEMORY_LIMIT', '256M');
+        define('WP_DEBUG_LOG', true);
+        define('WP_DEBUG_DISPLAY', false);
+        define('AUTH_KEY',         'sp-dev-auth-key');
+        define('SECURE_AUTH_KEY',  'sp-dev-secure-auth');
+        define('LOGGED_IN_KEY',    'sp-dev-logged-in');
+        define('NONCE_KEY',        'sp-dev-nonce');
+        define('AUTH_SALT',        'sp-dev-auth-salt');
+        define('SECURE_AUTH_SALT', 'sp-dev-secure-salt');
+        define('LOGGED_IN_SALT',   'sp-dev-logged-in-salt');
+        define('NONCE_SALT',       'sp-dev-nonce-salt');
+    ports:
+      - "8989:80"
+    volumes:
+      - wp_data:/var/www/html
+      - .:/var/www/html/wp-content/plugins/semantic-posts:cached
+
+  cli:
+    build:
+      context: ./docker
+    depends_on:
+      - wordpress
+    working_dir: /var/www/html/wp-content/plugins/semantic-posts
+    environment:
+      WORDPRESS_DB_HOST: db:3306
+      WORDPRESS_DB_USER: wordpress
+      WORDPRESS_DB_PASSWORD: wordpress
+      WORDPRESS_DB_NAME: wordpress
+    volumes:
+      - wp_data:/var/www/html
+      - .:/var/www/html/wp-content/plugins/semantic-posts:cached
+    entrypoint: ["bash"]
+
+volumes:
+  db_data:
+  wp_data:
