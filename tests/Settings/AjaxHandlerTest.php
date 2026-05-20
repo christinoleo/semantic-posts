@@ -42,6 +42,7 @@ final class AjaxResponse extends \Exception {
 final class FakeColdStart extends ColdStartProcessor {
 	public bool $started_called    = false;
 	public bool $start_returns     = true;
+	public bool $is_active_returns = true;
 	public array $progress_returns = array(
 		'phase'             => 'idle',
 		'last_processed_id' => 0,
@@ -59,6 +60,12 @@ final class FakeColdStart extends ColdStartProcessor {
 	}
 	public function progress(): array {
 		return $this->progress_returns;
+	}
+	public function is_active(): bool {
+		return $this->is_active_returns;
+	}
+	public function run_batch(): array {
+		return array( 'processed' => 0, 'halted_for_memory' => false );
 	}
 }
 
