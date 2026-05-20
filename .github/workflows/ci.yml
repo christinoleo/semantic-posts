@@ -1,0 +1,86 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  phpcs:
+    name: PHPCS (WPCS + AR-10/AR-12 sniffs)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.0'
+          coverage: none
+          tools: composer:v2
+
+      - name: Cache composer
+        uses: actions/cache@v4
+        with:
+          path: ~/.composer/cache
+          key: composer-${{ runner.os }}-${{ hashFiles('composer.json') }}
+          restore-keys: composer-${{ runner.os }}-
+
+      - name: Composer install
+        run: composer install --prefer-dist --no-progress --no-interaction
+
+      - name: Run PHPCS
+        run: composer lint
+
+  phpunit:
+    name: PHPUnit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.0'
+          coverage: none
+          tools: composer:v2
+
+      - name: Cache composer
+        uses: actions/cache@v4
+        with:
+          path: ~/.composer/cache
+          key: composer-${{ runner.os }}-${{ hashFiles('composer.json') }}
+          restore-keys: composer-${{ runner.os }}-
+
+      - name: Composer install
+        run: composer install --prefer-dist --no-progress --no-interaction
+
+      - name: Run PHPUnit
+        run: composer test
+
+  no-jquery:
+    name: AR-14 — no jQuery in assets/js
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Forbid jQuery references in assets/js/
+        run: |
+          if [ ! -d assets/js ]; then
+            echo "No assets/js directory yet — skipping (no JS to check)."
+            exit 0
+          fi
+          # Match either the `jQuery` identifier or the jQuery shorthand `$(`.
+          # Allow legitimate uses like console.log or "$" inside strings? No — AR-14 is strict.
+          if grep -RnE '\bjQuery\b|\$\(' assets/js/ ; then
+            echo "::error::AR-14 violation — jQuery or jQuery-shorthand \`\$(\` found in assets/js/."
+            exit 1
+          fi
+          echo "OK — no jQuery references found."
