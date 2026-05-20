@@ -162,11 +162,11 @@ final class AjaxHandlerTb13Test extends TestCase {
 		$this->assertSame( 0, $state->state['metrics']['failed'] );
 	}
 
-	public function test_run_verification_now_returns_stub_response(): void {
+	public function test_run_verification_now_returns_500_when_not_wired(): void {
 		$h   = $this->build();
 		$res = $this->capture( fn() => $h->handle_run_verification_now() );
-		$this->assertTrue( $res->success );
-		$this->assertTrue( $res->data['stubbed'] );
+		$this->assertFalse( $res->success );
+		$this->assertSame( 500, $res->status );
 	}
 
 	public function test_all_new_endpoints_require_authorization(): void {

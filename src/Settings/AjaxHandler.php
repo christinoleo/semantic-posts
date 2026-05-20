@@ -33,6 +33,7 @@ use SemanticPosts\Indexing\UnindexedQueue;
 use SemanticPosts\Indexing\Wiper;
 use SemanticPosts\Security\ApiKeyStorage;
 use SemanticPosts\Security\ApiKeyValidator;
+use SemanticPosts\Verification\VerificationPass;
 
 final class AjaxHandler {
 
@@ -71,6 +72,8 @@ final class AjaxHandler {
 	private ?HashDiffDetector $hash;
 	/** @var StateRepository|null */
 	private ?StateRepository $state;
+	/** @var VerificationPass|null */
+	private ?VerificationPass $verification;
 
 	/**
 	 * @param SettingsRepository    $settings       Settings repository.
@@ -84,6 +87,7 @@ final class AjaxHandler {
 	 * @param DirtyQueue|null       $dirty_queue    Used by retry-failed (TB-13).
 	 * @param HashDiffDetector|null $hash           Used by retry-failed to remark posts dirty.
 	 * @param StateRepository|null  $state          Used by retry-failed to read failed_posts.
+	 * @param VerificationPass|null $verification   Drift-check (TB-14).
 	 */
 	public function __construct(
 		SettingsRepository $settings,
@@ -96,7 +100,8 @@ final class AjaxHandler {
 		?TickProcessor $tick_processor = null,
 		?DirtyQueue $dirty_queue = null,
 		?HashDiffDetector $hash = null,
-		?StateRepository $state = null
+		?StateRepository $state = null,
+		?VerificationPass $verification = null
 	) {
 		$this->settings       = $settings;
 		$this->estimator      = $estimator;
@@ -109,6 +114,7 @@ final class AjaxHandler {
 		$this->dirty_queue    = $dirty_queue;
 		$this->hash           = $hash;
 		$this->state          = $state;
+		$this->verification   = $verification;
 	}
 
 	/**
@@ -263,15 +269,20 @@ final class AjaxHandler {
 		);
 	}
 
-	/** Stub for TB-14 verification trigger. */
+	/** Run a verification pass synchronously (TB-14). */
 	public function handle_run_verification_now(): void {
 		if ( ! $this->authorize() ) {
 			return;
 		}
+		if ( null === $this->verification ) {
+			wp_send_json_error( array( 'message' => 'Verification is not wired in this build.' ), 500 );
+			return;
+		}
+		$result = $this->verification->run();
 		wp_send_json_success(
 			array(
-				'message' => 'Verification will be available after TB-14.',
-				'stubbed' => true,
+				'message' => sprintf( 'MRD = %0.2f', (float) $result['mrd'] ),
+				'result'  => $result,
 			)
 		);
 	}

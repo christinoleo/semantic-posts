@@ -137,6 +137,26 @@ final class ObservabilityPanel {
 					<th><?php esc_html_e( 'Peak memory (MB, 24h)', 'semantic-posts' ); ?></th>
 					<td><?php echo esc_html( (string) $summary['peak_memory_mb'] ); ?></td>
 				</tr>
+				<?php
+				$verification = is_array( $this->state->read()['verification'] ?? null ) ? $this->state->read()['verification'] : array();
+				$last_mrd     = isset( $verification['last_mrd'] ) ? (float) $verification['last_mrd'] : null;
+				$last_run     = isset( $verification['last_run'] ) ? (int) $verification['last_run'] : null;
+				?>
+				<tr>
+					<th><?php esc_html_e( 'Last verification MRD', 'semantic-posts' ); ?></th>
+					<td>
+						<?php
+						if ( null === $last_mrd ) {
+							esc_html_e( '— never run', 'semantic-posts' );
+						} else {
+							echo esc_html( sprintf( '%0.2f', $last_mrd ) );
+						}
+						if ( null !== $last_run ) {
+							echo ' · ' . esc_html( gmdate( 'Y-m-d H:i:s', $last_run ) );
+						}
+						?>
+					</td>
+				</tr>
 			</tbody>
 		</table>
 
@@ -166,7 +186,7 @@ final class ObservabilityPanel {
 		<h3><?php esc_html_e( 'Maintenance', 'semantic-posts' ); ?></h3>
 		<p>
 			<button type="button" class="button" id="semantic-posts-run-tick-now"><?php esc_html_e( 'Run indexing now', 'semantic-posts' ); ?></button>
-			<button type="button" class="button" id="semantic-posts-run-verification-now" disabled title="<?php esc_attr_e( 'Available after TB-14.', 'semantic-posts' ); ?>"><?php esc_html_e( 'Run verification now', 'semantic-posts' ); ?></button>
+			<button type="button" class="button" id="semantic-posts-run-verification-now"><?php esc_html_e( 'Run verification now', 'semantic-posts' ); ?></button>
 			<span class="semantic-posts-maint-status" id="semantic-posts-maint-status" aria-live="polite"></span>
 		</p>
 		<?php
