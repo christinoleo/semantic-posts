@@ -89,6 +89,9 @@ class Renderer {
 		$context = array(
 			'sp_item_ids'       => $resolved['items'],
 			'sp_data_source'    => (string) $resolved['data_source'],
+			'sp_item_sources'   => isset( $resolved['item_sources'] ) && is_array( $resolved['item_sources'] )
+				? $resolved['item_sources']
+				: array(),
 			'sp_heading_text'   => (string) apply_filters(
 				'semantic_posts_heading_text',
 				__( 'You might also like', 'semantic-posts' ),
