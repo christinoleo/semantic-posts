@@ -39,22 +39,28 @@ class TickProcessor {
 	/** @var StateRepository */
 	private StateRepository $state;
 
+	/** @var ColdStartProcessor|null */
+	private ?ColdStartProcessor $cold_start;
+
 	/**
-	 * @param DirtyQueue      $queue     Dirty-post queue.
-	 * @param EmbedJob        $embed_job Embed-job runner.
-	 * @param MemoryGuard     $memory    Memory budget guard.
-	 * @param StateRepository $state     Cross-tick state owner.
+	 * @param DirtyQueue              $queue      Dirty-post queue.
+	 * @param EmbedJob                $embed_job  Embed-job runner.
+	 * @param MemoryGuard             $memory     Memory budget guard.
+	 * @param StateRepository         $state      Cross-tick state owner.
+	 * @param ColdStartProcessor|null $cold_start Optional cold-start drain (TB-09). Null = warm-only.
 	 */
 	public function __construct(
 		DirtyQueue $queue,
 		EmbedJob $embed_job,
 		MemoryGuard $memory,
-		StateRepository $state
+		StateRepository $state,
+		?ColdStartProcessor $cold_start = null
 	) {
-		$this->queue     = $queue;
-		$this->embed_job = $embed_job;
-		$this->memory    = $memory;
-		$this->state     = $state;
+		$this->queue      = $queue;
+		$this->embed_job  = $embed_job;
+		$this->memory     = $memory;
+		$this->state      = $state;
+		$this->cold_start = $cold_start;
 	}
 
 	/**
@@ -66,13 +72,29 @@ class TickProcessor {
 		$processed         = 0;
 		$halted_for_memory = false;
 
-		// Phase 1: cold-start (placeholder — TB-09 fills).
+		// Phase 1: cold-start drain (TB-09).
 		if ( $this->memory->should_halt() ) {
 			$this->persist_state();
 			return array(
 				'processed'         => $processed,
 				'halted_for_memory' => true,
 			);
+		}
+
+		if ( null !== $this->cold_start && $this->cold_start->is_active() ) {
+			$result            = $this->cold_start->run_batch();
+			$processed        += (int) $result['processed'];
+			$halted_for_memory = $halted_for_memory || (bool) $result['halted_for_memory'];
+
+			// If cold-start did real work this tick, skip the dirty-queue branch
+			// so we don't blow the memory budget. The next tick will drain dirties.
+			if ( $processed > 0 || $halted_for_memory ) {
+				$this->persist_state();
+				return array(
+					'processed'         => $processed,
+					'halted_for_memory' => $halted_for_memory,
+				);
+			}
 		}
 
 		// Phase 2: dirty queue.

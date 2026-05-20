@@ -99,11 +99,14 @@ final class ApiKeyStorageTest extends TestCase {
 		$storage = new ApiKeyStorage();
 		$storage->store( 'sk-original' );
 
-		$blob = base64_decode( $this->store[ ApiKeyStorage::OPTION_NAME ], true );
-		// Flip a byte deep in the ciphertext to force decryption failure that
-		// mirrors what a different key would produce.
-		$blob[strlen( $blob ) - 1] = chr( ord( $blob[strlen( $blob ) - 1] ) ^ 0xFF );
-		$this->store[ ApiKeyStorage::OPTION_NAME ] = base64_encode( $blob );
+		// Replace the stored payload with one encrypted under a DIFFERENT key —
+		// exactly what `AUTH_SALT rotation` produces in practice. openssl_decrypt
+		// returns false with the current key (padding mismatch), which the
+		// retrieve() contract maps to null + warn.
+		$wrong_key                                 = hash( 'sha256', 'different-auth-salt', true );
+		$iv                                        = random_bytes( 16 );
+		$wrong_cipher                              = openssl_encrypt( 'sk-original', 'aes-256-cbc', $wrong_key, OPENSSL_RAW_DATA, $iv );
+		$this->store[ ApiKeyStorage::OPTION_NAME ] = base64_encode( $iv . $wrong_cipher );
 
 		$this->assertNull( $storage->retrieve(), 'Tampered ciphertext must return null (key rotated equivalent).' );
 	}
