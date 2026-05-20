@@ -35,6 +35,8 @@ final class PluginSmokeTest extends TestCase {
 		);
 		Functions\when( 'register_activation_hook' )->justReturn( null );
 		Functions\when( 'add_action' )->justReturn( null );
+		Functions\when( 'add_filter' )->justReturn( null );
+		Functions\when( 'add_shortcode' )->justReturn( null );
 		Functions\when( 'load_plugin_textdomain' )->justReturn( true );
 	}
 
