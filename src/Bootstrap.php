@@ -12,6 +12,7 @@ declare( strict_types=1 );
 
 namespace SemanticPosts;
 
+use SemanticPosts\Lifecycle\BackupFilter;
 use SemanticPosts\Render\ContentFilter;
 use SemanticPosts\Render\Renderer;
 use SemanticPosts\Render\Shortcode;
@@ -68,9 +69,11 @@ final class Bootstrap {
 		$shortcode = new Shortcode( $renderer );
 		$content   = new ContentFilter( $renderer, $shortcode, $settings );
 		$page      = new SettingsPage( $settings );
+		$backup    = new BackupFilter();
 
 		add_action( 'admin_menu', array( $page, 'register_menu' ) );
 		add_filter( 'the_content', array( $content, 'maybe_append' ), 20 );
+		add_filter( 'semantic_posts_exclude_from_backup', array( $backup, 'default_excluded' ) );
 		add_shortcode( Shortcode::TAG, array( $shortcode, 'render' ) );
 
 		// Subsequent slices (TB-05+) extend this with embedding/crawler hooks.

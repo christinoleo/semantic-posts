@@ -67,6 +67,7 @@ final class BootstrapTest extends TestCase {
 		Actions\expectAdded( 'init' )->once();
 		Actions\expectAdded( 'admin_menu' )->once();
 		Filters\expectAdded( 'the_content' )->once();
+		Filters\expectAdded( 'semantic_posts_exclude_from_backup' )->once();
 
 		Bootstrap::instance()->registerHooks();
 
@@ -77,6 +78,7 @@ final class BootstrapTest extends TestCase {
 		Actions\expectAdded( 'init' )->once();
 		Actions\expectAdded( 'admin_menu' )->once();
 		Filters\expectAdded( 'the_content' )->once();
+		Filters\expectAdded( 'semantic_posts_exclude_from_backup' )->once();
 
 		$shortcode_calls = 0;
 		Functions\when( 'add_shortcode' )->alias(
