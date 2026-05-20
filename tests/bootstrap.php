@@ -26,11 +26,12 @@ if ( ! file_exists( $autoload ) ) {
 require_once $autoload;
 
 // Default stub for WP's is_admin() so Bootstrap branches that gate admin-only
-// wiring (e.g. the GitHubUpdater hookup) don't fatal in unit tests.
+// wiring don't fatal in unit tests.
 if ( ! function_exists( 'is_admin' ) ) {
 	function is_admin(): bool {
 		return false;
 	}
 }
+
 
 // Brain\Monkey is configured per-test via setUp/tearDown traits.
