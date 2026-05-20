@@ -4,7 +4,7 @@ Tags: related posts, embeddings, openai, semantic search, recommendations
 Requires at least: 6.0
 Tested up to: 7.0
 Requires PHP: 8.0
-Stable tag: 0.1.0
+Stable tag: 0.1.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -135,12 +135,22 @@ metrics are preserved.
 
 == Changelog ==
 
+= 0.1.1 =
+* Fix: the "Wipe & re-index" and "Start indexing" confirm dialogs now show
+  the real estimated cost ("Continue? $0.0010.") instead of a literal "?"
+  placeholder. Both flows now fetch the cost via the live AJAX endpoint
+  using the currently-selected embedding model.
+
 = 0.1.0 =
 * Initial release: indexing pipeline, three ranking modes, settings UI,
   observability panel, MRD verification pass, WP-CLI surface, nightly
   benchmark workflow.
 
 == Upgrade Notice ==
+
+= 0.1.1 =
+Patch release — fixes a confusing "$?" in the bulk-index confirm dialog.
+No data migration; safe to update in place.
 
 = 0.1.0 =
 First public release. After activation, paste your OpenAI key and click
