@@ -83,4 +83,52 @@ class NeighborStore {
 			update_post_meta( $post_id, '_sp_related', $current );
 		}
 	}
+
+	/**
+	 * Replace `$post_id`'s _sp_related with the given neighbor map. Empty map
+	 * deletes the meta row so postmeta queries skip empty entries.
+	 *
+	 * @param int              $post_id   Post whose row we set.
+	 * @param array<int,float> $neighbors Map of neighbor post_id => cosine score.
+	 */
+	public function write_related( int $post_id, array $neighbors ): void {
+		if ( empty( $neighbors ) ) {
+			delete_post_meta( $post_id, '_sp_related' );
+			return;
+		}
+		$normalized = array();
+		foreach ( $neighbors as $nid => $score ) {
+			$normalized[ (int) $nid ] = (float) $score;
+		}
+		update_post_meta( $post_id, '_sp_related', $normalized );
+	}
+
+	/**
+	 * Add `$from_id` to `$post_id`'s _sp_inbound list (dedup).
+	 *
+	 * @param int $post_id Target post (the one being referenced).
+	 * @param int $from_id Referencing post.
+	 */
+	public function add_inbound( int $post_id, int $from_id ): void {
+		$current   = $this->read_inbound( $post_id );
+		$current[] = $from_id;
+		$current   = array_values( array_unique( array_map( 'intval', $current ) ) );
+		update_post_meta( $post_id, '_sp_inbound', $current );
+	}
+
+	/**
+	 * Remove `$from_id` from `$post_id`'s _sp_inbound list.
+	 *
+	 * @param int $post_id Target post.
+	 * @param int $from_id Referencing post to drop.
+	 */
+	public function remove_inbound( int $post_id, int $from_id ): void {
+		$current = $this->read_inbound( $post_id );
+		$updated = array_values( array_filter( $current, static fn( $v ) => (int) $v !== $from_id ) );
+		if ( empty( $updated ) ) {
+			delete_post_meta( $post_id, '_sp_inbound' );
+			return;
+		}
+		update_post_meta( $post_id, '_sp_inbound', $updated );
+	}
 }

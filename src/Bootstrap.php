@@ -12,6 +12,7 @@ declare( strict_types=1 );
 
 namespace SemanticPosts;
 
+use SemanticPosts\Crawler\Crawler;
 use SemanticPosts\Crawler\NeighborStore;
 use SemanticPosts\Embeddings\IndexableTextBuilder;
 use SemanticPosts\Embeddings\OpenAIProvider;
@@ -84,15 +85,16 @@ final class Bootstrap {
 		$page      = new SettingsPage( $settings );
 		$backup    = new BackupFilter();
 
-		// Indexing pipeline (TB-05/06/07).
+		// Indexing pipeline (TB-05/06/07/08).
 		$builder        = new IndexableTextBuilder();
 		$rate_limiter   = new RateLimiter();
 		$hash_detector  = new HashDiffDetector( $builder );
 		$state          = new StateRepository();
 		$key_storage    = new ApiKeyStorage();
 		$provider       = new OpenAIProvider( $key_storage );
-		$embed_job      = new EmbedJob( $provider, $builder, $rate_limiter, $hash_detector, $state );
 		$neighbors      = new NeighborStore();
+		$crawler        = new Crawler( $neighbors );
+		$embed_job      = new EmbedJob( $provider, $builder, $rate_limiter, $hash_detector, $state, $crawler );
 		$cleanup        = new CleanupRouter( $neighbors, $hash_detector );
 		$save_handler   = new SavePostHandler( $hash_detector, $cleanup, $embed_job );
 		$dirty_queue    = new DirtyQueue();
