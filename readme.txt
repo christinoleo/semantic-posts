@@ -4,7 +4,7 @@ Tags: related posts, embeddings, openai, semantic search, recommendations
 Requires at least: 6.0
 Tested up to: 7.0
 Requires PHP: 8.0
-Stable tag: 0.1.2
+Stable tag: 0.1.3
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -135,6 +135,17 @@ metrics are preserved.
 
 == Changelog ==
 
+= 0.1.3 =
+* Fix: indexing tick was halting on the first iteration on hosts with the
+  default 40 MB WP_MEMORY_LIMIT (most shared hosting). MemoryGuard now reads
+  the runtime PHP `memory_limit` first — which WP raises to
+  `WP_MAX_MEMORY_LIMIT` (256 MB default) during admin / cron / WP-CLI — so
+  the 80% threshold reflects the actual cap.
+* Fix: `record_success` / `mark_post_failed` mutations were being silently
+  overwritten by the cold-start cursor write at the end of each successful
+  post in the same batch. The cursor write now re-reads state right before
+  persisting so the counters survive.
+
 = 0.1.2 =
 * Feature: GitHub-releases-based auto-updater. The plugin now reports
   updates inside `Dashboard → Updates` by checking the project's GitHub
@@ -153,6 +164,11 @@ metrics are preserved.
   benchmark workflow.
 
 == Upgrade Notice ==
+
+= 0.1.3 =
+Important — fixes the cold-start tick halting on default-config hosts and a
+race that silently clobbered the succeeded/failed metrics. Update strongly
+recommended.
 
 = 0.1.2 =
 Adds auto-updates via GitHub releases. After this update the "Update now"

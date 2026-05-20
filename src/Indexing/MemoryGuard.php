@@ -67,15 +67,30 @@ class MemoryGuard {
 	}
 
 	/**
-	 * Resolve the effective memory limit. Prefers WP_MEMORY_LIMIT (the value WP
-	 * actually enforces during admin/cron) over ini's memory_limit.
+	 * Resolve the effective memory limit.
+	 *
+	 * Reads `ini_get('memory_limit')` first because, by the time this code runs
+	 * (admin / cron / WP-CLI), WP has already raised the limit via
+	 * `wp_raise_memory_limit('admin')` from the default 40 MB `WP_MEMORY_LIMIT`
+	 * (frontend cap) to `WP_MAX_MEMORY_LIMIT` (256 MB default for admin) or
+	 * higher under WP-CLI. Reading the constant directly would short-circuit
+	 * the tick on every host that uses WP defaults — see the v0.1.3 incident.
+	 *
+	 * Falls back to `WP_MAX_MEMORY_LIMIT` then `WP_MEMORY_LIMIT` when ini is
+	 * unset.
 	 */
 	private function detect_limit_bytes(): int {
-		$limit = defined( 'WP_MEMORY_LIMIT' ) ? (string) WP_MEMORY_LIMIT : '';
-		if ( '' === $limit ) {
-			$limit = (string) ini_get( 'memory_limit' );
+		$ini = (string) ini_get( 'memory_limit' );
+		if ( '' !== $ini && '0' !== $ini ) {
+			return $this->parse_size( $ini );
 		}
-		return $this->parse_size( $limit );
+		if ( defined( 'WP_MAX_MEMORY_LIMIT' ) ) {
+			return $this->parse_size( (string) WP_MAX_MEMORY_LIMIT );
+		}
+		if ( defined( 'WP_MEMORY_LIMIT' ) ) {
+			return $this->parse_size( (string) WP_MEMORY_LIMIT );
+		}
+		return 0;
 	}
 
 	/**

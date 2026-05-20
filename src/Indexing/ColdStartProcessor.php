@@ -143,6 +143,7 @@ class ColdStartProcessor {
 
 		$batch = $this->queue->next_batch( self::POSTS_PER_BATCH, $last_id );
 		if ( empty( $batch ) ) {
+			$state                                    = $this->state->read();
 			$state['cold_start']['phase']             = self::PHASE_IDLE;
 			$state['cold_start']['last_processed_id'] = 0;
 			$this->state->write( $state );
@@ -154,8 +155,10 @@ class ColdStartProcessor {
 
 		if ( self::PHASE_IDLE === $phase ) {
 			$phase                          = self::PHASE_BOOTSTRAP;
+			$state                          = $this->state->read();
 			$state['cold_start']['phase']   = $phase;
 			$state['cold_start']['started'] = time();
+			$this->state->write( $state );
 			Logging::info( 'Cold start beginning Phase 1 bootstrap.' );
 		}
 
@@ -174,6 +177,10 @@ class ColdStartProcessor {
 			if ( EmbedJob::OUTCOME_SUCCESS === $outcome['outcome'] ) {
 				$this->crawler->insert( $post->ID );
 				++$processed;
+				// Re-read state so the metric increments (succeeded/retried) +
+				// failed_posts mutations made by EmbedJob / record_success /
+				// mark_post_failed are preserved across this cursor write.
+				$state                                    = $this->state->read();
 				$state['cold_start']['last_processed_id'] = $post->ID;
 				$this->state->write( $state );
 			}
