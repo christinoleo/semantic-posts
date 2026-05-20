@@ -71,6 +71,16 @@ class HashDiffDetector {
 	}
 
 	/**
+	 * Explicitly mark a post dirty. Used by Retry-failed (TB-13) to re-enqueue
+	 * posts that previously exhausted their retry budget.
+	 *
+	 * @param int $post_id Target post.
+	 */
+	public function mark_dirty( int $post_id ): void {
+		update_post_meta( $post_id, '_sp_dirty', 1 );
+	}
+
+	/**
 	 * Clear the dirty flag after a successful embed. Idempotent — deleting a
 	 * missing meta row is a no-op in WP.
 	 *

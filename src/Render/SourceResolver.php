@@ -20,6 +20,8 @@ declare( strict_types=1 );
 
 namespace SemanticPosts\Render;
 
+use SemanticPosts\Observability\Metrics;
+use SemanticPosts\Observability\NullMetrics;
 use WP_Post;
 use WP_Query;
 
@@ -29,6 +31,16 @@ class SourceResolver {
 	public const SOURCE_NONE     = 'none';
 	public const SOURCE_SEMANTIC = 'semantic';
 
+	/** @var Metrics */
+	private Metrics $metrics;
+
+	/**
+	 * @param Metrics|null $metrics Observability sink (TB-13). NullMetrics default for tests + back-compat.
+	 */
+	public function __construct( ?Metrics $metrics = null ) {
+		$this->metrics = $metrics ?? new NullMetrics();
+	}
+
 	/**
 	 * Resolve related items for $post.
 	 *
@@ -37,11 +49,17 @@ class SourceResolver {
 	 * @return array{items: int[], data_source: string, item_sources: array<int,string>}
 	 */
 	public function resolve( WP_Post $post, int $count = 5 ): array {
+		$queries  = 0;
 		$semantic = $this->semantic_related( $post, $count );
 		if ( ! empty( $semantic['items'] ) ) {
-			return $this->maybe_pad_with_category( $post, $count, $semantic );
+			$result = $this->maybe_pad_with_category( $post, $count, $semantic, $queries );
+			$this->metrics->record_render_query( $queries );
+			return $result;
 		}
-		return $this->category_fallback( $post, $count );
+		$result   = $this->category_fallback( $post, $count );
+		$queries += empty( $result['items'] ) ? 0 : 1;
+		$this->metrics->record_render_query( $queries );
+		return $result;
 	}
 
 	/**
@@ -99,9 +117,10 @@ class SourceResolver {
 	 * @param  WP_Post                                                                      $post     Source post.
 	 * @param  int                                                                          $count    Requested count.
 	 * @param  array{items: int[], item_sources: array<int,string>, threshold_active: bool} $semantic Semantic resolution result.
+	 * @param  int                                                                          $queries  Out-param — incremented for every WP_Query issued.
 	 * @return array{items: int[], data_source: string, item_sources: array<int,string>}
 	 */
-	private function maybe_pad_with_category( WP_Post $post, int $count, array $semantic ): array {
+	private function maybe_pad_with_category( WP_Post $post, int $count, array $semantic, int &$queries ): array {
 		$items        = $semantic['items'];
 		$item_sources = $semantic['item_sources'];
 
@@ -116,7 +135,8 @@ class SourceResolver {
 		$needed = $count - count( $items );
 		// Ask the fallback for `count + needed` so we have headroom to dedupe.
 		$fallback = $this->category_fallback( $post, $count + $needed );
-		$padding  = array();
+		++$queries;
+		$padding = array();
 		foreach ( $fallback['items'] as $fid ) {
 			if ( in_array( (int) $fid, $items, true ) ) {
 				continue;

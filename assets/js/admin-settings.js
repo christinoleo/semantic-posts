@@ -197,12 +197,43 @@
 		} );
 	}
 
+	function runTickNow() {
+		var status = byId( 'semantic-posts-maint-status' );
+		if ( status ) {
+			status.textContent = '…';
+		}
+		post( cfg.actions.runIndexingNow, {} ).then( function ( res ) {
+			var msg = ( res.json && res.json.data && res.json.data.message ) || 'Error';
+			if ( status ) {
+				status.textContent = msg;
+			}
+			if ( res.ok && res.json.data && res.json.data.progress ) {
+				renderProgress( res.json.data.progress );
+			}
+		} );
+	}
+
+	function retryFailed() {
+		var status = byId( 'semantic-posts-maint-status' );
+		if ( status ) {
+			status.textContent = '…';
+		}
+		post( cfg.actions.retryFailed, {} ).then( function ( res ) {
+			var msg = ( res.json && res.json.data && res.json.data.message ) || 'Error';
+			if ( status ) {
+				status.textContent = msg;
+			}
+		} );
+	}
+
 	document.addEventListener( 'DOMContentLoaded', function () {
 		var modelEl    = byId( 'semantic-posts-model' );
 		var countEl    = byId( 'semantic-posts-count' );
 		var validateBn = byId( 'semantic-posts-validate-key' );
 		var startBn    = byId( 'semantic-posts-start' );
 		var wipeBn     = byId( 'semantic-posts-wipe-reindex' );
+		var tickBn     = byId( 'semantic-posts-run-tick-now' );
+		var retryBn    = byId( 'semantic-posts-retry-failed' );
 
 		if ( modelEl ) {
 			modelEl.addEventListener( 'change', refreshCost );
@@ -218,6 +249,12 @@
 		}
 		if ( wipeBn ) {
 			wipeBn.addEventListener( 'click', wipeAndReindex );
+		}
+		if ( tickBn ) {
+			tickBn.addEventListener( 'click', runTickNow );
+		}
+		if ( retryBn ) {
+			retryBn.addEventListener( 'click', retryFailed );
 		}
 
 		setupQualityToggle();
