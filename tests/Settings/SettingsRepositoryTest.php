@@ -36,6 +36,9 @@ final class SettingsRepositoryTest extends TestCase {
 		Functions\when( 'sanitize_key' )->alias(
 			static fn( $k ) => strtolower( (string) preg_replace( '/[^a-z0-9_\-]/i', '', (string) $k ) )
 		);
+		Functions\when( 'sanitize_text_field' )->alias(
+			static fn( $v ) => trim( (string) preg_replace( '/\s+/u', ' ', (string) $v ) )
+		);
 	}
 
 	protected function tearDown(): void {

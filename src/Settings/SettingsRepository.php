@@ -13,6 +13,8 @@ declare( strict_types=1 );
 
 namespace SemanticPosts\Settings;
 
+use SemanticPosts\Ranking\Mode;
+
 /**
  * Settings persistence + sanitization.
  */
@@ -25,11 +27,12 @@ class SettingsRepository {
 	public const MODE_OFF         = 'off';
 
 	/**
-	 * @var array{post_types: string[], display_mode: string}
+	 * @var array{post_types: string[], display_mode: string, ranking_mode: string}
 	 */
 	private const DEFAULTS = array(
 		'post_types'   => array( 'post' ),
 		'display_mode' => self::MODE_AUTO_INJECT,
+		'ranking_mode' => Mode::MOST_RELEVANT,
 	);
 
 	private const VALID_MODES = array(
@@ -38,8 +41,14 @@ class SettingsRepository {
 		self::MODE_OFF,
 	);
 
+	private const VALID_RANKING_MODES = array(
+		Mode::MOST_RELEVANT,
+		Mode::FRESH_FIRST,
+		Mode::DIVERSE_MIX,
+	);
+
 	/**
-	 * @return array{post_types: string[], display_mode: string}
+	 * @return array{post_types: string[], display_mode: string, ranking_mode: string}
 	 */
 	public function all(): array {
 		$stored = get_option( self::OPTION_NAME, array() );
@@ -64,11 +73,18 @@ class SettingsRepository {
 	}
 
 	/**
+	 * @return string Active ranking-mode slug (one of Mode::*).
+	 */
+	public function ranking_mode(): string {
+		return $this->all()['ranking_mode'];
+	}
+
+	/**
 	 * Persist a settings array after sanitization. Returns the sanitized array
 	 * that was written, so callers (and the Settings page) can display it.
 	 *
 	 * @param array<string,mixed> $raw Raw form data.
-	 * @return array{post_types: string[], display_mode: string}
+	 * @return array{post_types: string[], display_mode: string, ranking_mode: string}
 	 */
 	public function save( array $raw ): array {
 		$sanitized = $this->sanitize( $raw );
@@ -78,7 +94,7 @@ class SettingsRepository {
 
 	/**
 	 * @param array<string,mixed> $raw Raw input.
-	 * @return array{post_types: string[], display_mode: string}
+	 * @return array{post_types: string[], display_mode: string, ranking_mode: string}
 	 */
 	public function sanitize( array $raw ): array {
 		$post_types = array();
@@ -106,9 +122,17 @@ class SettingsRepository {
 			$mode = self::DEFAULTS['display_mode'];
 		}
 
+		$ranking = isset( $raw['ranking_mode'] ) && is_string( $raw['ranking_mode'] )
+			? sanitize_text_field( $raw['ranking_mode'] )
+			: '';
+		if ( ! in_array( $ranking, self::VALID_RANKING_MODES, true ) ) {
+			$ranking = self::DEFAULTS['ranking_mode'];
+		}
+
 		return array(
 			'post_types'   => $post_types,
 			'display_mode' => $mode,
+			'ranking_mode' => $ranking,
 		);
 	}
 
@@ -123,13 +147,14 @@ class SettingsRepository {
 
 	/**
 	 * @param array<string,mixed> $stored Stored option value.
-	 * @return array{post_types: string[], display_mode: string}
+	 * @return array{post_types: string[], display_mode: string, ranking_mode: string}
 	 */
 	private function merge_with_defaults( array $stored ): array {
 		return $this->sanitize(
 			array(
 				'post_types'   => $stored['post_types'] ?? self::DEFAULTS['post_types'],
 				'display_mode' => $stored['display_mode'] ?? self::DEFAULTS['display_mode'],
+				'ranking_mode' => $stored['ranking_mode'] ?? self::DEFAULTS['ranking_mode'],
 			)
 		);
 	}

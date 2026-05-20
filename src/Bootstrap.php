@@ -28,6 +28,7 @@ use SemanticPosts\Indexing\StateRepository;
 use SemanticPosts\Indexing\TickProcessor;
 use SemanticPosts\Indexing\UnindexedQueue;
 use SemanticPosts\Lifecycle\BackupFilter;
+use SemanticPosts\Ranking\ModeFactory;
 use SemanticPosts\Render\ContentFilter;
 use SemanticPosts\Render\Renderer;
 use SemanticPosts\Render\Shortcode;
@@ -95,7 +96,16 @@ final class Bootstrap {
 		$key_storage     = new ApiKeyStorage();
 		$provider        = new OpenAIProvider( $key_storage );
 		$neighbors       = new NeighborStore();
-		$crawler         = new Crawler( $neighbors );
+		$mode_factory    = new ModeFactory();
+		$crawler         = new Crawler(
+			$neighbors,
+			null,
+			null,
+			null,
+			static function () use ( $settings, $mode_factory ) {
+				return $mode_factory->make( $settings->ranking_mode() );
+			}
+		);
 		$embed_job       = new EmbedJob( $provider, $builder, $rate_limiter, $hash_detector, $state, $crawler );
 		$cleanup         = new CleanupRouter( $neighbors, $hash_detector );
 		$save_handler    = new SavePostHandler( $hash_detector, $cleanup, $embed_job );

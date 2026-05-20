@@ -29,6 +29,9 @@ declare( strict_types=1 );
 namespace SemanticPosts\Crawler;
 
 use SemanticPosts\Embeddings\Vector;
+use SemanticPosts\Ranking\Mode;
+use SemanticPosts\Ranking\MostRelevantMode;
+use SemanticPosts\Ranking\RankingContext;
 use SplFixedArray;
 
 class Crawler {
@@ -78,17 +81,22 @@ class Crawler {
 	/** @var int Phase-1 threshold; overridable for tests. */
 	private int $phase_1_limit;
 
+	/** @var callable():Mode Resolves the active ranking mode at call time. */
+	private $mode_resolver;
+
 	/**
 	 * @param NeighborStore         $neighbors      Graph storage.
 	 * @param callable():int[]|null $random_sampler Override the random-sample source (test seam).
 	 * @param callable():int[]|null $indexed_lister Override the "list every indexed post" query (test seam).
 	 * @param int|null              $phase_1_limit  Override N_b for tests (defaults to PHASE_1_LIMIT).
+	 * @param callable():Mode|null  $mode_resolver  Returns the active Mode; defaults to MostRelevantMode.
 	 */
 	public function __construct(
 		NeighborStore $neighbors,
 		?callable $random_sampler = null,
 		?callable $indexed_lister = null,
-		?int $phase_1_limit = null
+		?int $phase_1_limit = null,
+		?callable $mode_resolver = null
 	) {
 		$this->neighbors      = $neighbors;
 		$this->random_sampler = $random_sampler ?? function (): array {
@@ -96,6 +104,42 @@ class Crawler {
 		};
 		$this->indexed_lister = $indexed_lister;
 		$this->phase_1_limit  = $phase_1_limit ?? self::PHASE_1_LIMIT;
+		$this->mode_resolver  = $mode_resolver ?? static fn(): Mode => new MostRelevantMode();
+	}
+
+	/**
+	 * Build a default RankingContext that reads embeddings via Vector and
+	 * ages via WP post date.
+	 */
+	private function ranking_context(): RankingContext {
+		return new class() implements RankingContext {
+			/**
+			 * @param int $post_id Post to look up.
+			 */
+			public function get_embedding( int $post_id ): ?SplFixedArray {
+				$raw = (string) get_post_meta( $post_id, Vector::POSTMETA_KEY, true );
+				if ( '' === $raw ) {
+					return null;
+				}
+				$decoded = Vector::decode( $raw );
+				return 0 === $decoded->getSize() ? null : $decoded;
+			}
+
+			/**
+			 * @param int $post_id Post to look up.
+			 */
+			public function get_age_days( int $post_id ): int {
+				$gmt = function_exists( 'get_post_field' ) ? (string) get_post_field( 'post_date_gmt', $post_id ) : '';
+				if ( '' === $gmt ) {
+					return 0;
+				}
+				$ts = strtotime( $gmt );
+				if ( false === $ts ) {
+					return 0;
+				}
+				return (int) max( 0, floor( ( time() - $ts ) / DAY_IN_SECONDS ) );
+			}
+		};
 	}
 
 	/**
@@ -153,7 +197,8 @@ class Crawler {
 		}
 
 		arsort( $scored, SORT_NUMERIC );
-		$top_k = array_slice( $scored, 0, self::TOP_K, true );
+		$mode  = ( $this->mode_resolver )();
+		$top_k = $mode->rank( $scored, self::TOP_K, $this->ranking_context() );
 
 		// Persist new outbound for source.
 		$this->neighbors->write_related( $post_id, $top_k );
@@ -237,7 +282,8 @@ class Crawler {
 		}
 
 		arsort( $scored, SORT_NUMERIC );
-		$top_k = array_slice( $scored, 0, self::TOP_K, true );
+		$mode  = ( $this->mode_resolver )();
+		$top_k = $mode->rank( $scored, self::TOP_K, $this->ranking_context() );
 		$this->persist_initial_top_k( $post_id, $top_k );
 		return $ops;
 	}
@@ -293,7 +339,9 @@ class Crawler {
 			}
 		}
 
-		$this->persist_initial_top_k( $post_id, $heap );
+		$mode   = ( $this->mode_resolver )();
+		$ranked = $mode->rank( $heap, self::TOP_K, $this->ranking_context() );
+		$this->persist_initial_top_k( $post_id, $ranked );
 		return $ops;
 	}
 

@@ -113,6 +113,27 @@ final class SettingsPage {
 					<?php endforeach; ?>
 				</fieldset>
 
+				<h2><?php esc_html_e( 'Ranking mode', 'semantic-posts' ); ?></h2>
+				<p class="description">
+					<?php esc_html_e( 'How the plugin orders the related-posts widget. Featured (first card) is always the highest-relevance match regardless of mode.', 'semantic-posts' ); ?>
+				</p>
+				<fieldset>
+					<?php
+					$rankings = array(
+						\SemanticPosts\Ranking\Mode::MOST_RELEVANT => __( 'Most relevant — pure semantic match (default).', 'semantic-posts' ),
+						\SemanticPosts\Ranking\Mode::FRESH_FIRST   => __( 'Fresh first — recency-weighted: recent posts surface ahead of equally-relevant older ones.', 'semantic-posts' ),
+						\SemanticPosts\Ranking\Mode::DIVERSE_MIX   => __( 'Diverse mix — MMR: prefers topical variety after the featured card.', 'semantic-posts' ),
+					);
+					foreach ( $rankings as $value => $label ) :
+						$checked = ( $value === $current['ranking_mode'] ) ? 'checked' : '';
+						?>
+						<label>
+							<input type="radio" name="semantic_posts_settings[ranking_mode]" value="<?php echo esc_attr( $value ); ?>" <?php echo esc_attr( $checked ); ?>>
+							<?php echo esc_html( $label ); ?>
+						</label><br>
+					<?php endforeach; ?>
+				</fieldset>
+
 				<p>
 					<button type="submit" name="semantic_posts_settings_submit" class="button button-primary">
 						<?php esc_html_e( 'Save changes', 'semantic-posts' ); ?>
