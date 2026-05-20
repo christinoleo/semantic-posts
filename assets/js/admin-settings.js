@@ -120,51 +120,71 @@
 	}
 
 	function startIndexing() {
-		var status = byId( 'semantic-posts-bulk-status' );
-		if ( status ) {
-			status.textContent = cfg.i18n.startingLabel;
-		}
-		post( cfg.actions.startIndexing, {} ).then( function ( res ) {
-			if ( ! res.ok ) {
-				var msg = ( res.json && res.json.data && res.json.data.message ) || 'Error';
-				if ( status ) {
-					status.textContent = msg;
-				}
+		var modelEl = byId( 'semantic-posts-model' );
+		var model   = modelEl ? modelEl.value : '';
+		post( cfg.actions.costPreview, { model: model } ).then( function ( res ) {
+			var cost = '?';
+			if ( res.ok && res.json && res.json.data && typeof res.json.data.estimated_usd !== 'undefined' ) {
+				cost = fmtUsd( res.json.data.estimated_usd );
+			}
+			if ( ! window.confirm( cfg.i18n.confirmStart.replace( '%s', cost ) ) ) {
 				return;
 			}
+			var status = byId( 'semantic-posts-bulk-status' );
 			if ( status ) {
-				status.textContent = ( res.json.data && res.json.data.message ) || '';
+				status.textContent = cfg.i18n.startingLabel;
 			}
-			if ( res.json.data && res.json.data.progress ) {
-				renderProgress( res.json.data.progress );
-			}
-			startPolling();
+			post( cfg.actions.startIndexing, {} ).then( function ( res2 ) {
+				if ( ! res2.ok ) {
+					var msg = ( res2.json && res2.json.data && res2.json.data.message ) || 'Error';
+					if ( status ) {
+						status.textContent = msg;
+					}
+					return;
+				}
+				if ( status ) {
+					status.textContent = ( res2.json.data && res2.json.data.message ) || '';
+				}
+				if ( res2.json.data && res2.json.data.progress ) {
+					renderProgress( res2.json.data.progress );
+				}
+				startPolling();
+			} );
 		} );
 	}
 
 	function wipeAndReindex() {
-		if ( ! window.confirm( cfg.i18n.confirmWipe.replace( '%s', '?' ) ) ) {
-			return;
-		}
-		var status = byId( 'semantic-posts-bulk-status' );
-		if ( status ) {
-			status.textContent = cfg.i18n.startingLabel;
-		}
-		post( cfg.actions.wipeReindex, {} ).then( function ( res ) {
-			if ( ! res.ok ) {
-				var msg = ( res.json && res.json.data && res.json.data.message ) || 'Error';
-				if ( status ) {
-					status.textContent = msg;
-				}
+		var modelEl = byId( 'semantic-posts-model' );
+		var model   = modelEl ? modelEl.value : '';
+		// Fetch a fresh cost estimate before confirming so the user sees the real $.
+		post( cfg.actions.costPreview, { model: model } ).then( function ( res ) {
+			var cost = '?';
+			if ( res.ok && res.json && res.json.data && typeof res.json.data.estimated_usd !== 'undefined' ) {
+				cost = fmtUsd( res.json.data.estimated_usd );
+			}
+			if ( ! window.confirm( cfg.i18n.confirmWipe.replace( '%s', cost ) ) ) {
 				return;
 			}
+			var status = byId( 'semantic-posts-bulk-status' );
 			if ( status ) {
-				status.textContent = ( res.json.data && res.json.data.message ) || '';
+				status.textContent = cfg.i18n.startingLabel;
 			}
-			if ( res.json.data && res.json.data.progress ) {
-				renderProgress( res.json.data.progress );
-			}
-			startPolling();
+			post( cfg.actions.wipeReindex, {} ).then( function ( res2 ) {
+				if ( ! res2.ok ) {
+					var msg = ( res2.json && res2.json.data && res2.json.data.message ) || 'Error';
+					if ( status ) {
+						status.textContent = msg;
+					}
+					return;
+				}
+				if ( status ) {
+					status.textContent = ( res2.json.data && res2.json.data.message ) || '';
+				}
+				if ( res2.json.data && res2.json.data.progress ) {
+					renderProgress( res2.json.data.progress );
+				}
+				startPolling();
+			} );
 		} );
 	}
 
