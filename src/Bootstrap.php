@@ -12,6 +12,8 @@ declare( strict_types=1 );
 
 namespace SemanticPosts;
 
+defined( 'ABSPATH' ) || exit;
+
 use SemanticPosts\Crawler\Crawler;
 use SemanticPosts\Crawler\NeighborStore;
 use SemanticPosts\Embeddings\IndexableTextBuilder;

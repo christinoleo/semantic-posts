@@ -100,6 +100,7 @@ final class Vector {
 	public static function dot( SplFixedArray $a, SplFixedArray $b ): float {
 		$len = $a->getSize();
 		if ( $len !== $b->getSize() ) {
+			// phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- exception messages go to logs, not HTML.
 			throw new LengthException(
 				sprintf( 'Vector::dot dimension mismatch: %d vs %d.', $len, $b->getSize() )
 			);

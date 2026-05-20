@@ -116,6 +116,7 @@ class OpenAIProvider implements Provider {
 
 		if ( $status >= 400 ) {
 			// 4xx other than 429: bad request, unauthorized, quota exceeded, etc.
+			// phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- exception messages are not rendered as HTML; they go to logs.
 			throw new FatalException( sprintf( 'OpenAIProvider HTTP %d — fatal: %s', $status, $body ) );
 		}
 
@@ -126,6 +127,7 @@ class OpenAIProvider implements Provider {
 
 		$embedding = $decoded['data'][0]['embedding'];
 		if ( self::EXPECTED_DIM !== count( $embedding ) ) {
+			// phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- exception messages go to logs, not HTML.
 			throw new FatalException(
 				sprintf( 'OpenAIProvider unexpected embedding dimension %d (expected %d).', count( $embedding ), self::EXPECTED_DIM )
 			);
