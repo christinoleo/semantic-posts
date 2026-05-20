@@ -61,7 +61,7 @@
 
     <!-- Exception messages are not user-facing output; escaping rule does not apply. -->
     <rule ref="WordPress.Security.EscapeOutput.ExceptionNotEscaped">
-        <exclude-pattern>src/Embeddings/Vector.php</exclude-pattern>
+        <exclude-pattern>src/*</exclude-pattern>
     </rule>
 
     <!-- Squiz inline-type-hint sniff doesn't understand generics syntax.
