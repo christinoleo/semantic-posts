@@ -1,0 +1,378 @@
+# Copyright (C) 2026 Leonardo Christino
+# This file is distributed under the GPL-2.0-or-later.
+msgid ""
+msgstr ""
+"Project-Id-Version: SemanticPosts 0.1.0\n"
+"Report-Msgid-Bugs-To: https://wordpress.org/support/plugin/semantic-posts\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"POT-Creation-Date: 2026-05-20T21:05:43+00:00\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"X-Generator: WP-CLI 2.12.0\n"
+"X-Domain: semantic-posts\n"
+
+#. Plugin Name of the plugin
+#: semantic-posts.php
+#: src/Settings/SettingsPage.php:71
+#: src/Settings/SettingsPage.php:72
+msgid "SemanticPosts"
+msgstr ""
+
+#. Plugin URI of the plugin
+#: semantic-posts.php
+msgid "https://github.com/christinoleo/semantic-posts"
+msgstr ""
+
+#. Description of the plugin
+#: semantic-posts.php
+msgid "Related posts via semantic embeddings. Precomputed at index time, served from postmeta cache."
+msgstr ""
+
+#. Author of the plugin
+#: semantic-posts.php
+msgid "Leonardo Christino"
+msgstr ""
+
+#: semantic-posts.php:35
+msgid "SemanticPosts requires PHP 8.0 or higher."
+msgstr ""
+
+#: semantic-posts.php:36
+msgid "Plugin activation error"
+msgstr ""
+
+#: src/Indexing/CronRegistration.php:49
+#: src/Settings/SettingsPage.php:302
+msgid "Every 6 hours"
+msgstr ""
+
+#: src/Observability/ObservabilityPanel.php:70
+msgid "Configure your API key to enable semantic recommendations."
+msgstr ""
+
+#. translators: 1: indexed count, 2: total Recommendable Posts.
+#: src/Observability/ObservabilityPanel.php:83
+#, php-format
+msgid "Reindexing in progress. %1$d / %2$d posts indexed."
+msgstr ""
+
+#: src/Observability/ObservabilityPanel.php:95
+msgid "Observability (last 24h)"
+msgstr ""
+
+#: src/Observability/ObservabilityPanel.php:99
+msgid "Embedding calls"
+msgstr ""
+
+#: src/Observability/ObservabilityPanel.php:103
+msgid "Estimated cost (USD)"
+msgstr ""
+
+#: src/Observability/ObservabilityPanel.php:107
+msgid "Posts in dirty queue"
+msgstr ""
+
+#: src/Observability/ObservabilityPanel.php:111
+msgid "Failed posts"
+msgstr ""
+
+#: src/Observability/ObservabilityPanel.php:115
+msgid "Retry failed"
+msgstr ""
+
+#: src/Observability/ObservabilityPanel.php:120
+msgid "Last cron tick"
+msgstr ""
+
+#: src/Observability/ObservabilityPanel.php:124
+#: src/Observability/ObservabilityPanel.php:155
+msgid "— never run"
+msgstr ""
+
+#: src/Observability/ObservabilityPanel.php:138
+msgid "Render-path queries (avg / max)"
+msgstr ""
+
+#: src/Observability/ObservabilityPanel.php:142
+msgid "Peak memory (MB, 24h)"
+msgstr ""
+
+#: src/Observability/ObservabilityPanel.php:151
+msgid "Last verification MRD"
+msgstr ""
+
+#: src/Observability/ObservabilityPanel.php:168
+msgid "Recent ticks"
+msgstr ""
+
+#: src/Observability/ObservabilityPanel.php:170
+msgid "No ticks recorded yet."
+msgstr ""
+
+#: src/Observability/ObservabilityPanel.php:192
+msgid "Algorithm constants (EV registry)"
+msgstr ""
+
+#: src/Observability/ObservabilityPanel.php:193
+msgid "Read-only mirror of the EV registry from architecture.md. \"Source\" reflects whether the value is still the default, was filtered at runtime, or is tied to a Setting."
+msgstr ""
+
+#: src/Observability/ObservabilityPanel.php:197
+msgid "EV"
+msgstr ""
+
+#: src/Observability/ObservabilityPanel.php:198
+msgid "Name"
+msgstr ""
+
+#: src/Observability/ObservabilityPanel.php:199
+msgid "Current"
+msgstr ""
+
+#: src/Observability/ObservabilityPanel.php:200
+msgid "Source"
+msgstr ""
+
+#: src/Observability/ObservabilityPanel.php:201
+msgid "Revisit trigger"
+msgstr ""
+
+#: src/Observability/ObservabilityPanel.php:218
+msgid "Maintenance"
+msgstr ""
+
+#: src/Observability/ObservabilityPanel.php:220
+msgid "Run indexing now"
+msgstr ""
+
+#: src/Observability/ObservabilityPanel.php:221
+msgid "Run verification now"
+msgstr ""
+
+#: src/Render/Renderer.php:97
+msgid "You might also like"
+msgstr ""
+
+#: src/Settings/CorpusFloorNotice.php:55
+#: src/Verification/DriftNotice.php:48
+msgid "SemanticPosts:"
+msgstr ""
+
+#: src/Settings/CorpusFloorNotice.php:56
+msgid "Your indexable corpus has fewer than 50 posts. Related-post quality will improve as the corpus grows — this notice is informational and can be dismissed."
+msgstr ""
+
+#. translators: %s is the estimated USD cost.
+#: src/Settings/SettingsPage.php:121
+#, php-format
+msgid "Changing the embedding model will regenerate embeddings for every indexed post. This costs approximately $%s. Continue?"
+msgstr ""
+
+#. translators: %s is the estimated USD cost.
+#: src/Settings/SettingsPage.php:123
+#, php-format
+msgid "Start indexing the corpus? Estimated cost: $%s."
+msgstr ""
+
+#. translators: 1: number of indexed posts, 2: total posts.
+#: src/Settings/SettingsPage.php:125
+#, php-format
+msgid "Indexed %1$d / %2$d"
+msgstr ""
+
+#: src/Settings/SettingsPage.php:126
+msgid "Idle."
+msgstr ""
+
+#: src/Settings/SettingsPage.php:127
+msgid "Starting…"
+msgstr ""
+
+#: src/Settings/SettingsPage.php:128
+msgid "Indexing complete."
+msgstr ""
+
+#: src/Settings/SettingsPage.php:129
+msgid "Validating…"
+msgstr ""
+
+#: src/Settings/SettingsPage.php:130
+msgid "API key saved."
+msgstr ""
+
+#: src/Settings/SettingsPage.php:131
+msgid "Estimating cost…"
+msgstr ""
+
+#: src/Settings/SettingsPage.php:133
+msgid "Estimates assume 500 tokens per post. Actual cost may vary."
+msgstr ""
+
+#: src/Settings/SettingsPage.php:143
+msgid "Forbidden."
+msgstr ""
+
+#: src/Settings/SettingsPage.php:174
+msgid "SemanticPosts Settings"
+msgstr ""
+
+#: src/Settings/SettingsPage.php:177
+msgid "Settings saved."
+msgstr ""
+
+#: src/Settings/SettingsPage.php:182
+msgid "Embedding model changed."
+msgstr ""
+
+#: src/Settings/SettingsPage.php:183
+msgid "Existing embeddings will keep working with the old model until you wipe and re-index. Use \"Wipe and re-index\" below to switch the whole corpus to the new model."
+msgstr ""
+
+#: src/Settings/SettingsPage.php:191
+msgid "OpenAI API key"
+msgstr ""
+
+#: src/Settings/SettingsPage.php:193
+msgid "Stored encrypted at rest. Click \"Validate & save\" to verify the key with a test call before saving."
+msgstr ""
+
+#: src/Settings/SettingsPage.php:196
+msgid "•••• key on file ••••"
+msgstr ""
+
+#: src/Settings/SettingsPage.php:197
+msgid "Validate & save"
+msgstr ""
+
+#: src/Settings/SettingsPage.php:201
+msgid "Post types"
+msgstr ""
+
+#: src/Settings/SettingsPage.php:203
+msgid "Choose which post types get a related-posts widget. Commerce CPTs (WooCommerce products, etc.) are best left off — related products are handled by the commerce plugin."
+msgstr ""
+
+#: src/Settings/SettingsPage.php:219
+msgid "Display mode"
+msgstr ""
+
+#: src/Settings/SettingsPage.php:223
+msgid "Auto-inject after the_content"
+msgstr ""
+
+#: src/Settings/SettingsPage.php:224
+msgid "Shortcode only ([semantic_posts])"
+msgstr ""
+
+#: src/Settings/SettingsPage.php:225
+msgid "Off"
+msgstr ""
+
+#: src/Settings/SettingsPage.php:237
+msgid "Ranking mode"
+msgstr ""
+
+#: src/Settings/SettingsPage.php:239
+msgid "How the plugin orders the related-posts widget. Featured (first card) is always the highest-relevance match regardless of mode."
+msgstr ""
+
+#: src/Settings/SettingsPage.php:244
+msgid "Most relevant — pure semantic match (default)."
+msgstr ""
+
+#: src/Settings/SettingsPage.php:245
+msgid "Fresh first — recency-weighted: recent posts surface ahead of equally-relevant older ones."
+msgstr ""
+
+#: src/Settings/SettingsPage.php:246
+msgid "Diverse mix — MMR: prefers topical variety after the featured card."
+msgstr ""
+
+#: src/Settings/SettingsPage.php:258
+msgid "Embedding model"
+msgstr ""
+
+#: src/Settings/SettingsPage.php:262
+msgid "OpenAI text-embedding-3-small ($0.020 / 1M tokens)"
+msgstr ""
+
+#: src/Settings/SettingsPage.php:265
+msgid "OpenAI text-embedding-3-large ($0.130 / 1M tokens)"
+msgstr ""
+
+#: src/Settings/SettingsPage.php:270
+msgid "Related-post count"
+msgstr ""
+
+#: src/Settings/SettingsPage.php:273
+msgid "3–10 items rendered per widget."
+msgstr ""
+
+#: src/Settings/SettingsPage.php:276
+msgid "Quality-bounded mode"
+msgstr ""
+
+#: src/Settings/SettingsPage.php:280
+msgid "Hide widget when too few high-quality matches are available."
+msgstr ""
+
+#: src/Settings/SettingsPage.php:286
+msgid "Minimum items:"
+msgstr ""
+
+#: src/Settings/SettingsPage.php:292
+msgid "Score threshold (0.0–1.0):"
+msgstr ""
+
+#: src/Settings/SettingsPage.php:298
+msgid "Cron frequency"
+msgstr ""
+
+#: src/Settings/SettingsPage.php:301
+msgid "Hourly"
+msgstr ""
+
+#: src/Settings/SettingsPage.php:303
+msgid "Daily"
+msgstr ""
+
+#: src/Settings/SettingsPage.php:307
+msgid "Cost preview"
+msgstr ""
+
+#: src/Settings/SettingsPage.php:309
+msgid "Loading estimate…"
+msgstr ""
+
+#: src/Settings/SettingsPage.php:314
+msgid "Save changes"
+msgstr ""
+
+#: src/Settings/SettingsPage.php:321
+msgid "Bulk indexing"
+msgstr ""
+
+#: src/Settings/SettingsPage.php:323
+msgid "Run a one-shot pass over the entire corpus. Resumable — safe to navigate away mid-run."
+msgstr ""
+
+#: src/Settings/SettingsPage.php:326
+msgid "Start indexing"
+msgstr ""
+
+#: src/Settings/SettingsPage.php:327
+msgid "Wipe & re-index"
+msgstr ""
+
+#. translators: 1: observed MRD, 2: threshold.
+#: src/Verification/DriftNotice.php:52
+#, php-format
+msgid "Related-posts graph drift detected (MRD = %1$.2f, threshold = %2$.2f). Re-indexing the corpus is recommended to refresh recommendations."
+msgstr ""
+
+#: src/Verification/DriftNotice.php:57
+msgid "Open settings →"
+msgstr ""
