@@ -16,7 +16,7 @@ namespace SemanticPosts\Settings;
 
 class CostEstimator {
 
-	private const DEFAULT_AVG_TOKENS = 500;
+	public const DEFAULT_AVG_TOKENS = 500;
 
 	/**
 	 * USD per million tokens, by model slug.
