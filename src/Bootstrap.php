@@ -30,6 +30,8 @@ use SemanticPosts\Indexing\TickProcessor;
 use SemanticPosts\Indexing\UnindexedQueue;
 use SemanticPosts\Indexing\Wiper;
 use SemanticPosts\Lifecycle\BackupFilter;
+use SemanticPosts\Observability\ObservabilityPanel;
+use SemanticPosts\Observability\StateMetrics;
 use SemanticPosts\Ranking\ModeFactory;
 use SemanticPosts\Render\ContentFilter;
 use SemanticPosts\Render\Renderer;
@@ -87,12 +89,13 @@ final class Bootstrap {
 		add_action( 'init', array( $this, 'load_textdomain' ) );
 
 		$settings     = new SettingsRepository();
-		$resolver     = new SourceResolver();
+		$state        = new StateRepository();
+		$metrics      = new StateMetrics( $state );
+		$resolver     = new SourceResolver( $metrics );
 		$renderer     = new Renderer( $resolver );
 		$shortcode    = new Shortcode( $renderer );
 		$content      = new ContentFilter( $renderer, $shortcode, $settings );
 		$key_storage  = new ApiKeyStorage();
-		$page         = new SettingsPage( $settings, $key_storage );
 		$backup       = new BackupFilter();
 		$floor_notice = new CorpusFloorNotice( $settings );
 
@@ -100,7 +103,6 @@ final class Bootstrap {
 		$builder         = new IndexableTextBuilder();
 		$rate_limiter    = new RateLimiter();
 		$hash_detector   = new HashDiffDetector( $builder );
-		$state           = new StateRepository();
 		$provider        = new OpenAIProvider( $key_storage );
 		$neighbors       = new NeighborStore();
 		$mode_factory    = new ModeFactory();
@@ -113,19 +115,21 @@ final class Bootstrap {
 				return $mode_factory->make( $settings->ranking_mode() );
 			}
 		);
-		$embed_job       = new EmbedJob( $provider, $builder, $rate_limiter, $hash_detector, $state, $crawler );
+		$embed_job       = new EmbedJob( $provider, $builder, $rate_limiter, $hash_detector, $state, $crawler, $metrics );
 		$cleanup         = new CleanupRouter( $neighbors, $hash_detector );
 		$save_handler    = new SavePostHandler( $hash_detector, $cleanup, $embed_job );
 		$dirty_queue     = new DirtyQueue();
 		$memory_guard    = new MemoryGuard();
 		$unindexed_queue = new UnindexedQueue();
 		$cold_start      = new ColdStartProcessor( $unindexed_queue, $embed_job, $crawler, $state, $memory_guard );
-		$tick_processor  = new TickProcessor( $dirty_queue, $embed_job, $memory_guard, $state, $cold_start );
+		$tick_processor  = new TickProcessor( $dirty_queue, $embed_job, $memory_guard, $state, $cold_start, $metrics );
 
 		// TB-12 admin surface.
 		$estimator     = new CostEstimator();
 		$key_validator = new ApiKeyValidator();
 		$wiper         = new Wiper( $state );
+		$panel         = new ObservabilityPanel( $metrics, $state, $unindexed_queue, $key_storage );
+		$page          = new SettingsPage( $settings, $key_storage, $panel );
 		$ajax          = new AjaxHandler(
 			$settings,
 			$estimator,
@@ -133,7 +137,11 @@ final class Bootstrap {
 			$key_validator,
 			$cold_start,
 			$wiper,
-			$unindexed_queue
+			$unindexed_queue,
+			$tick_processor,
+			$dirty_queue,
+			$hash_detector,
+			$state
 		);
 
 		add_action( 'admin_menu', array( $page, 'register_menu' ) );
@@ -158,6 +166,9 @@ final class Bootstrap {
 		add_action( 'wp_ajax_' . AjaxHandler::ACTION_PROGRESS, array( $ajax, 'handle_progress' ) );
 		add_action( 'wp_ajax_' . AjaxHandler::ACTION_WIPE_REINDEX, array( $ajax, 'handle_wipe_and_reindex' ) );
 		add_action( 'wp_ajax_' . AjaxHandler::ACTION_DISMISS_FLOOR, array( $ajax, 'handle_dismiss_floor_notice' ) );
+		add_action( 'wp_ajax_' . AjaxHandler::ACTION_RUN_INDEXING_NOW, array( $ajax, 'handle_run_indexing_now' ) );
+		add_action( 'wp_ajax_' . AjaxHandler::ACTION_RETRY_FAILED, array( $ajax, 'handle_retry_failed' ) );
+		add_action( 'wp_ajax_' . AjaxHandler::ACTION_RUN_VERIFICATION_NOW, array( $ajax, 'handle_run_verification_now' ) );
 	}
 
 	/**

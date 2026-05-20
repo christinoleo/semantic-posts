@@ -25,6 +25,10 @@ declare( strict_types=1 );
 namespace SemanticPosts\Settings;
 
 use SemanticPosts\Indexing\ColdStartProcessor;
+use SemanticPosts\Indexing\DirtyQueue;
+use SemanticPosts\Indexing\HashDiffDetector;
+use SemanticPosts\Indexing\StateRepository;
+use SemanticPosts\Indexing\TickProcessor;
 use SemanticPosts\Indexing\UnindexedQueue;
 use SemanticPosts\Indexing\Wiper;
 use SemanticPosts\Security\ApiKeyStorage;
@@ -35,12 +39,15 @@ final class AjaxHandler {
 	public const NONCE_ACTION         = 'semantic_posts_admin_ajax';
 	public const NOTICE_USER_META_KEY = '_sp_floor_notice_dismissed';
 
-	public const ACTION_COST_PREVIEW   = 'semantic_posts_cost_preview';
-	public const ACTION_VALIDATE_KEY   = 'semantic_posts_validate_api_key';
-	public const ACTION_START_INDEXING = 'semantic_posts_start_indexing';
-	public const ACTION_PROGRESS       = 'semantic_posts_progress';
-	public const ACTION_WIPE_REINDEX   = 'semantic_posts_wipe_and_reindex';
-	public const ACTION_DISMISS_FLOOR  = 'semantic_posts_dismiss_floor_notice';
+	public const ACTION_COST_PREVIEW         = 'semantic_posts_cost_preview';
+	public const ACTION_VALIDATE_KEY         = 'semantic_posts_validate_api_key';
+	public const ACTION_START_INDEXING       = 'semantic_posts_start_indexing';
+	public const ACTION_PROGRESS             = 'semantic_posts_progress';
+	public const ACTION_WIPE_REINDEX         = 'semantic_posts_wipe_and_reindex';
+	public const ACTION_DISMISS_FLOOR        = 'semantic_posts_dismiss_floor_notice';
+	public const ACTION_RUN_INDEXING_NOW     = 'semantic_posts_run_indexing_now';
+	public const ACTION_RETRY_FAILED         = 'semantic_posts_retry_failed';
+	public const ACTION_RUN_VERIFICATION_NOW = 'semantic_posts_run_verification_now';
 
 	/** @var SettingsRepository */
 	private SettingsRepository $settings;
@@ -56,17 +63,27 @@ final class AjaxHandler {
 	private Wiper $wiper;
 	/** @var UnindexedQueue */
 	private UnindexedQueue $unindexed;
+	/** @var TickProcessor|null */
+	private ?TickProcessor $tick_processor;
+	/** @var DirtyQueue|null */
+	private ?DirtyQueue $dirty_queue;
+	/** @var HashDiffDetector|null */
+	private ?HashDiffDetector $hash;
+	/** @var StateRepository|null */
+	private ?StateRepository $state;
 
 	/**
-	 * @param SettingsRepository $settings      Settings repository.
-	 * @param CostEstimator      $estimator     Cost estimator for the live preview.
-	 * @param ApiKeyStorage      $key_storage   API key store (encrypted).
-	 * @param ApiKeyValidator    $key_validator Validates candidate keys via test call.
-	 * @param ColdStartProcessor $cold_start    Cold-start orchestrator.
-	 * @param Wiper              $wiper         Postmeta wipe for the re-index flow.
-	 * @param UnindexedQueue     $unindexed     Read-side queue (not currently used by
-	 *                                          handlers — reserved for richer progress
-	 *                                          payloads in TB-13).
+	 * @param SettingsRepository    $settings       Settings repository.
+	 * @param CostEstimator         $estimator      Cost estimator for the live preview.
+	 * @param ApiKeyStorage         $key_storage    API key store (encrypted).
+	 * @param ApiKeyValidator       $key_validator  Validates candidate keys via test call.
+	 * @param ColdStartProcessor    $cold_start     Cold-start orchestrator.
+	 * @param Wiper                 $wiper          Postmeta wipe for the re-index flow.
+	 * @param UnindexedQueue        $unindexed      Read-side queue (cost-preview anchor).
+	 * @param TickProcessor|null    $tick_processor Run-now handler (TB-13). Null OK pre-TB-13.
+	 * @param DirtyQueue|null       $dirty_queue    Used by retry-failed (TB-13).
+	 * @param HashDiffDetector|null $hash           Used by retry-failed to remark posts dirty.
+	 * @param StateRepository|null  $state          Used by retry-failed to read failed_posts.
 	 */
 	public function __construct(
 		SettingsRepository $settings,
@@ -75,15 +92,23 @@ final class AjaxHandler {
 		ApiKeyValidator $key_validator,
 		ColdStartProcessor $cold_start,
 		Wiper $wiper,
-		UnindexedQueue $unindexed
+		UnindexedQueue $unindexed,
+		?TickProcessor $tick_processor = null,
+		?DirtyQueue $dirty_queue = null,
+		?HashDiffDetector $hash = null,
+		?StateRepository $state = null
 	) {
-		$this->settings      = $settings;
-		$this->estimator     = $estimator;
-		$this->key_storage   = $key_storage;
-		$this->key_validator = $key_validator;
-		$this->cold_start    = $cold_start;
-		$this->wiper         = $wiper;
-		$this->unindexed     = $unindexed;
+		$this->settings       = $settings;
+		$this->estimator      = $estimator;
+		$this->key_storage    = $key_storage;
+		$this->key_validator  = $key_validator;
+		$this->cold_start     = $cold_start;
+		$this->wiper          = $wiper;
+		$this->unindexed      = $unindexed;
+		$this->tick_processor = $tick_processor;
+		$this->dirty_queue    = $dirty_queue;
+		$this->hash           = $hash;
+		$this->state          = $state;
 	}
 
 	/**
@@ -187,6 +212,66 @@ final class AjaxHandler {
 				'rows_deleted' => $rows,
 				'restarted'    => $started,
 				'progress'     => $this->cold_start->progress(),
+			)
+		);
+	}
+
+	/** Run one TickProcessor::run synchronously (admin maintenance). */
+	public function handle_run_indexing_now(): void {
+		if ( ! $this->authorize() ) {
+			return;
+		}
+		if ( null === $this->tick_processor ) {
+			wp_send_json_error( array( 'message' => 'Run-now is not wired in this build.' ), 500 );
+			return;
+		}
+		$result = $this->tick_processor->run();
+		wp_send_json_success(
+			array(
+				'message'  => 'Tick complete.',
+				'tick'     => $result,
+				'progress' => $this->cold_start->progress(),
+			)
+		);
+	}
+
+	/** Re-enqueue every failed post by marking it dirty and clearing the failed list. */
+	public function handle_retry_failed(): void {
+		if ( ! $this->authorize() ) {
+			return;
+		}
+		if ( null === $this->state || null === $this->hash ) {
+			wp_send_json_error( array( 'message' => 'Retry-failed is not wired in this build.' ), 500 );
+			return;
+		}
+		$state  = $this->state->read();
+		$failed = is_array( $state['failed_posts'] ?? null ) ? array_keys( $state['failed_posts'] ) : array();
+		$count  = 0;
+		foreach ( $failed as $pid ) {
+			$this->hash->mark_dirty( (int) $pid );
+			++$count;
+		}
+		$state['failed_posts']      = array();
+		$state['metrics']['failed'] = 0;
+		$this->state->write( $state );
+
+		wp_send_json_success(
+			array(
+				'message' => 'Re-enqueued ' . $count . ' post(s).',
+				'retried' => $count,
+			)
+		);
+	}
+
+	/** Stub for TB-14 verification trigger. */
+	public function handle_run_verification_now(): void {
+		if ( ! $this->authorize() ) {
+			return;
+		}
+		wp_send_json_success(
+			array(
+				'message' => 'Verification will be available after TB-14.',
+				'stubbed' => true,
 			)
 		);
 	}

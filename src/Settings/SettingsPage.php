@@ -22,6 +22,7 @@ declare( strict_types=1 );
 namespace SemanticPosts\Settings;
 
 use SemanticPosts\Indexing\CronRegistration;
+use SemanticPosts\Observability\ObservabilityPanel;
 use SemanticPosts\Security\ApiKeyStorage;
 
 /**
@@ -44,14 +45,22 @@ final class SettingsPage {
 	private ApiKeyStorage $key_storage;
 
 	/**
-	 * @param SettingsRepository $repo        Settings repository.
-	 * @param ApiKeyStorage      $key_storage API key storage adapter (used to
-	 *                                        decide whether the placeholder
-	 *                                        signals "key on file").
+	 * @var ObservabilityPanel|null
 	 */
-	public function __construct( SettingsRepository $repo, ApiKeyStorage $key_storage ) {
+	private ?ObservabilityPanel $panel;
+
+	/**
+	 * @param SettingsRepository      $repo        Settings repository.
+	 * @param ApiKeyStorage           $key_storage API key storage adapter (used to
+	 *                                             decide whether the placeholder
+	 *                                             signals "key on file").
+	 * @param ObservabilityPanel|null $panel       Observability surface appended below
+	 *                                             the form (TB-13). Optional — back-compat.
+	 */
+	public function __construct( SettingsRepository $repo, ApiKeyStorage $key_storage, ?ObservabilityPanel $panel = null ) {
 		$this->repo        = $repo;
 		$this->key_storage = $key_storage;
+		$this->panel       = $panel;
 	}
 
 	/**
@@ -97,12 +106,15 @@ final class SettingsPage {
 				'ajaxUrl'     => admin_url( 'admin-ajax.php' ),
 				'nonce'       => wp_create_nonce( AjaxHandler::NONCE_ACTION ),
 				'actions'     => array(
-					'costPreview'   => AjaxHandler::ACTION_COST_PREVIEW,
-					'validateKey'   => AjaxHandler::ACTION_VALIDATE_KEY,
-					'startIndexing' => AjaxHandler::ACTION_START_INDEXING,
-					'progress'      => AjaxHandler::ACTION_PROGRESS,
-					'wipeReindex'   => AjaxHandler::ACTION_WIPE_REINDEX,
-					'dismissFloor'  => AjaxHandler::ACTION_DISMISS_FLOOR,
+					'costPreview'     => AjaxHandler::ACTION_COST_PREVIEW,
+					'validateKey'     => AjaxHandler::ACTION_VALIDATE_KEY,
+					'startIndexing'   => AjaxHandler::ACTION_START_INDEXING,
+					'progress'        => AjaxHandler::ACTION_PROGRESS,
+					'wipeReindex'     => AjaxHandler::ACTION_WIPE_REINDEX,
+					'dismissFloor'    => AjaxHandler::ACTION_DISMISS_FLOOR,
+					'runIndexingNow'  => AjaxHandler::ACTION_RUN_INDEXING_NOW,
+					'retryFailed'     => AjaxHandler::ACTION_RETRY_FAILED,
+					'runVerification' => AjaxHandler::ACTION_RUN_VERIFICATION_NOW,
 				),
 				'i18n'        => array(
 					/* translators: %s is the estimated USD cost. */
@@ -319,6 +331,12 @@ final class SettingsPage {
 				<div class="semantic-posts-progress-bar"><span class="semantic-posts-progress-fill" style="width:0%"></span></div>
 				<div class="semantic-posts-progress-label" id="semantic-posts-progress-label"></div>
 			</div>
+
+			<?php
+			if ( null !== $this->panel ) {
+				$this->panel->render();
+			}
+			?>
 		</div>
 		<?php
 	}

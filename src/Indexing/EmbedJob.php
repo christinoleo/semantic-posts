@@ -27,6 +27,8 @@ use SemanticPosts\Embeddings\IndexableTextBuilder;
 use SemanticPosts\Embeddings\Provider;
 use SemanticPosts\Embeddings\Vector;
 use SemanticPosts\Logging;
+use SemanticPosts\Observability\Metrics;
+use SemanticPosts\Observability\NullMetrics;
 use WP_Post;
 
 class EmbedJob {
@@ -59,6 +61,9 @@ class EmbedJob {
 	/** @var Crawler|null Optional graph-update step run after a successful embed. */
 	private ?Crawler $crawler;
 
+	/** @var Metrics */
+	private Metrics $metrics;
+
 	/**
 	 * @param Provider             $provider     Embedding provider (OpenAIProvider in v1).
 	 * @param IndexableTextBuilder $builder      ADR-0001 text composer.
@@ -66,6 +71,7 @@ class EmbedJob {
 	 * @param HashDiffDetector     $hash         AR-10 owner of _sp_text_hash + _sp_dirty.
 	 * @param StateRepository      $state        AR-* owner of _sp_state (metrics + failed list).
 	 * @param Crawler|null         $crawler      Optional graph-update step (TB-08). Null in unit tests that don't exercise the crawler.
+	 * @param Metrics|null         $metrics      Observability sink (TB-13). NullMetrics default for tests + back-compat.
 	 */
 	public function __construct(
 		Provider $provider,
@@ -73,7 +79,8 @@ class EmbedJob {
 		RateLimiter $rate_limiter,
 		HashDiffDetector $hash,
 		StateRepository $state,
-		?Crawler $crawler = null
+		?Crawler $crawler = null,
+		?Metrics $metrics = null
 	) {
 		$this->provider     = $provider;
 		$this->builder      = $builder;
@@ -81,6 +88,7 @@ class EmbedJob {
 		$this->hash         = $hash;
 		$this->state        = $state;
 		$this->crawler      = $crawler;
+		$this->metrics      = $metrics ?? new NullMetrics();
 	}
 
 	/**
@@ -139,6 +147,11 @@ class EmbedJob {
 		$this->hash->write_hash( $post->ID, $hash );
 		$this->hash->clear_dirty( $post->ID );
 		$this->state->record_success();
+
+		// Observability (TB-13): track tokens billed + estimated cost.
+		$tokens = (int) ceil( strlen( $text ) / 4 ); // rough token estimate.
+		$cost   = ( $tokens / 1_000_000 ) * $this->provider->costPerMillionTokens();
+		$this->metrics->record_embedding_call( $tokens, $cost );
 
 		if ( null !== $this->crawler && ! $skip_warm_graph ) {
 			$this->crawler->update( $post->ID );

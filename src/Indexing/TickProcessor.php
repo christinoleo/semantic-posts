@@ -21,6 +21,8 @@ declare( strict_types=1 );
 namespace SemanticPosts\Indexing;
 
 use SemanticPosts\Logging;
+use SemanticPosts\Observability\Metrics;
+use SemanticPosts\Observability\NullMetrics;
 
 class TickProcessor {
 
@@ -42,25 +44,31 @@ class TickProcessor {
 	/** @var ColdStartProcessor|null */
 	private ?ColdStartProcessor $cold_start;
 
+	/** @var Metrics */
+	private Metrics $metrics;
+
 	/**
 	 * @param DirtyQueue              $queue      Dirty-post queue.
 	 * @param EmbedJob                $embed_job  Embed-job runner.
 	 * @param MemoryGuard             $memory     Memory budget guard.
 	 * @param StateRepository         $state      Cross-tick state owner.
 	 * @param ColdStartProcessor|null $cold_start Optional cold-start drain (TB-09). Null = warm-only.
+	 * @param Metrics|null            $metrics    Observability sink (TB-13). NullMetrics default for tests + back-compat.
 	 */
 	public function __construct(
 		DirtyQueue $queue,
 		EmbedJob $embed_job,
 		MemoryGuard $memory,
 		StateRepository $state,
-		?ColdStartProcessor $cold_start = null
+		?ColdStartProcessor $cold_start = null,
+		?Metrics $metrics = null
 	) {
 		$this->queue      = $queue;
 		$this->embed_job  = $embed_job;
 		$this->memory     = $memory;
 		$this->state      = $state;
 		$this->cold_start = $cold_start;
+		$this->metrics    = $metrics ?? new NullMetrics();
 	}
 
 	/**
@@ -118,6 +126,16 @@ class TickProcessor {
 		// Future: if state['verification']['next_due'] <= time(), run a verification pass.
 
 		$this->persist_state();
+		$this->metrics->record_cron_tick(
+			array(
+				'processed'         => $processed,
+				'outcome'           => $halted_for_memory ? 'halted' : 'ok',
+				'halted_for_memory' => $halted_for_memory,
+			)
+		);
+		if ( function_exists( 'memory_get_peak_usage' ) ) {
+			$this->metrics->record_peak_memory( (int) memory_get_peak_usage( true ) );
+		}
 		return array(
 			'processed'         => $processed,
 			'halted_for_memory' => $halted_for_memory,
