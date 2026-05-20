@@ -40,9 +40,9 @@ register_activation_hook(
 	}
 );
 
-add_action(
-	'plugins_loaded',
-	static function () {
-		load_plugin_textdomain( 'semantic-posts', false, dirname( plugin_basename( __FILE__ ) ) . '/languages' );
-	}
-);
+// AR invariant: Bootstrap is the only place add_action/add_filter live. The
+// main file just kicks it off — WP loads this file before plugins_loaded fires,
+// so registering hooks here is safe for any action that runs `init` or later.
+if ( class_exists( \SemanticPosts\Bootstrap::class ) ) {
+	\SemanticPosts\Bootstrap::instance()->registerHooks();
+}

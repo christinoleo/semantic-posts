@@ -54,6 +54,23 @@
         </properties>
     </rule>
 
+    <!-- src/ uses PSR-12 camelCase for public methods on PSR-4 classes; WPCS
+         snake-case enforcement is for runtime hook callbacks, not class internals. -->
+    <rule ref="WordPress.NamingConventions.ValidFunctionName">
+        <exclude-pattern>src/*</exclude-pattern>
+    </rule>
+
+    <!-- Exception messages are not user-facing output; escaping rule does not apply. -->
+    <rule ref="WordPress.Security.EscapeOutput.ExceptionNotEscaped">
+        <exclude-pattern>src/Embeddings/Vector.php</exclude-pattern>
+    </rule>
+
+    <!-- Squiz inline-type-hint sniff doesn't understand generics syntax.
+         Type info is documented in @param docblocks; runtime type is the class name. -->
+    <rule ref="Squiz.Commenting.FunctionComment.IncorrectTypeHint">
+        <exclude-pattern>src/Embeddings/Vector.php</exclude-pattern>
+    </rule>
+
     <!-- AR-10 + AR-12 sniffs apply to the entire repo to catch any code path. -->
     <rule ref="./tools/phpcs-sniffs/SemanticPosts/ruleset.xml"/>
 </ruleset>

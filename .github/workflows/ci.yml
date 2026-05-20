@@ -84,3 +84,27 @@ jobs:
             exit 1
           fi
           echo "OK — no jQuery references found."
+
+  single-hook-owner:
+    name: Bootstrap is the only place add_action/add_filter is called
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Grep for stray add_action/add_filter outside Bootstrap
+        run: |
+          set -e
+          # Find PHP files in src/ that call add_action/add_filter; allowlist Bootstrap.php only.
+          violations=$(grep -REn '\b(add_action|add_filter)\s*\(' src/ \
+            | grep -v '^src/Bootstrap\.php:' \
+            || true)
+          if [ -n "$violations" ]; then
+            echo "::error::Hook registration must live in Bootstrap. Offenders:"
+            echo "$violations"
+            exit 1
+          fi
+          # Same check for the main plugin file: add_action/add_filter must NOT appear.
+          if grep -En '\b(add_action|add_filter)\s*\(' semantic-posts.php ; then
+            echo "::error::semantic-posts.php must not call add_action/add_filter — delegate to Bootstrap."
+            exit 1
+          fi
+          echo "OK — Bootstrap is the only hook owner."
