@@ -4,7 +4,7 @@ Tags: related posts, embeddings, openai, semantic search, recommendations
 Requires at least: 6.0
 Tested up to: 7.0
 Requires PHP: 8.0
-Stable tag: 0.1.1
+Stable tag: 0.1.2
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -135,6 +135,12 @@ metrics are preserved.
 
 == Changelog ==
 
+= 0.1.2 =
+* Feature: GitHub-releases-based auto-updater. The plugin now reports
+  updates inside `Dashboard → Updates` by checking the project's GitHub
+  releases. No need for a WordPress.org listing — the standard "Update
+  now" button installs the latest zip directly.
+
 = 0.1.1 =
 * Fix: the "Wipe & re-index" and "Start indexing" confirm dialogs now show
   the real estimated cost ("Continue? $0.0010.") instead of a literal "?"
@@ -147,6 +153,10 @@ metrics are preserved.
   benchmark workflow.
 
 == Upgrade Notice ==
+
+= 0.1.2 =
+Adds auto-updates via GitHub releases. After this update the "Update now"
+link in Dashboard → Updates will work without a WP.org listing.
 
 = 0.1.1 =
 Patch release — fixes a confusing "$?" in the bulk-index confirm dialog.
