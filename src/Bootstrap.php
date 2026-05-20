@@ -44,6 +44,9 @@ use SemanticPosts\Settings\CorpusFloorNotice;
 use SemanticPosts\Settings\CostEstimator;
 use SemanticPosts\Settings\SettingsPage;
 use SemanticPosts\Settings\SettingsRepository;
+use SemanticPosts\Verification\DriftNotice;
+use SemanticPosts\Verification\VerificationPass;
+use SemanticPosts\Embeddings\Vector;
 
 /**
  * Plugin Bootstrap. See file header for the single-owner invariant.
@@ -122,7 +125,29 @@ final class Bootstrap {
 		$memory_guard    = new MemoryGuard();
 		$unindexed_queue = new UnindexedQueue();
 		$cold_start      = new ColdStartProcessor( $unindexed_queue, $embed_job, $crawler, $state, $memory_guard );
-		$tick_processor  = new TickProcessor( $dirty_queue, $embed_job, $memory_guard, $state, $cold_start, $metrics );
+
+		// TB-14 verification.
+		$verification   = new VerificationPass(
+			$state,
+			$neighbors,
+			static fn(): int => time(),
+			static function ( int $size ) {
+				return self::random_indexed_post_ids( $size );
+			},
+			static function () {
+				return self::all_indexed_post_ids();
+			},
+			static function ( int $post_id ) {
+				$raw = get_post_meta( $post_id, Vector::POSTMETA_KEY, true );
+				if ( ! is_string( $raw ) || '' === $raw ) {
+					return null;
+				}
+				$decoded = Vector::decode( $raw );
+				return 0 === $decoded->getSize() ? null : $decoded;
+			}
+		);
+		$tick_processor = new TickProcessor( $dirty_queue, $embed_job, $memory_guard, $state, $cold_start, $metrics, $verification );
+		$drift_notice   = new DriftNotice( $state, $verification );
 
 		// TB-12 admin surface.
 		$estimator     = new CostEstimator();
@@ -141,12 +166,14 @@ final class Bootstrap {
 			$tick_processor,
 			$dirty_queue,
 			$hash_detector,
-			$state
+			$state,
+			$verification
 		);
 
 		add_action( 'admin_menu', array( $page, 'register_menu' ) );
 		add_action( 'admin_enqueue_scripts', array( $page, 'enqueue_assets' ) );
 		add_action( 'admin_notices', array( $floor_notice, 'maybe_render' ) );
+		add_action( 'admin_notices', array( $drift_notice, 'maybe_render' ) );
 		add_filter( 'cron_schedules', array( CronRegistration::class, 'register_intervals' ) ); // phpcs:ignore WordPress.WP.CronInterval.ChangeDetected
 		add_filter( 'the_content', array( $content, 'maybe_append' ), 20 );
 		add_filter( 'semantic_posts_exclude_from_backup', array( $backup, 'default_excluded' ) );
@@ -176,5 +203,53 @@ final class Bootstrap {
 	 */
 	public function load_textdomain(): void {
 		load_plugin_textdomain( 'semantic-posts', false, dirname( plugin_basename( SEMANTIC_POSTS_FILE ) ) . '/languages' );
+	}
+
+	/**
+	 * Return every post ID that currently has an `_sp_embedding` row. Used by
+	 * the TB-14 brute-force comparison.
+	 *
+	 * @return int[]
+	 */
+	private static function all_indexed_post_ids(): array {
+		if ( ! class_exists( \WP_Query::class ) ) {
+			return array();
+		}
+		$query = new \WP_Query(
+			array(
+				'post_status'            => 'publish',
+				'post_type'              => 'any',
+				'posts_per_page'         => -1,
+				'fields'                 => 'ids',
+				'no_found_rows'          => true,
+				'update_post_meta_cache' => false,
+				'update_post_term_cache' => false,
+				'meta_query'             => array( // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_query
+					array(
+						'key'     => Vector::POSTMETA_KEY,
+						'compare' => 'EXISTS',
+					),
+				),
+			)
+		);
+		return array_map( 'intval', (array) $query->posts );
+	}
+
+	/**
+	 * Pick `$size` random indexed post IDs. Lightweight implementation: re-uses
+	 * `all_indexed_post_ids` and shuffles in-PHP. The verification pass only
+	 * runs weekly so the extra read is fine.
+	 *
+	 * @param int $size Sample size.
+	 * @return int[]
+	 */
+	private static function random_indexed_post_ids( int $size ): array {
+		$all = self::all_indexed_post_ids();
+		if ( count( $all ) <= $size ) {
+			shuffle( $all );
+			return $all;
+		}
+		shuffle( $all );
+		return array_slice( $all, 0, $size );
 	}
 }

@@ -23,6 +23,7 @@ namespace SemanticPosts\Indexing;
 use SemanticPosts\Logging;
 use SemanticPosts\Observability\Metrics;
 use SemanticPosts\Observability\NullMetrics;
+use SemanticPosts\Verification\VerificationPass;
 
 class TickProcessor {
 
@@ -47,13 +48,17 @@ class TickProcessor {
 	/** @var Metrics */
 	private Metrics $metrics;
 
+	/** @var VerificationPass|null */
+	private ?VerificationPass $verification;
+
 	/**
-	 * @param DirtyQueue              $queue      Dirty-post queue.
-	 * @param EmbedJob                $embed_job  Embed-job runner.
-	 * @param MemoryGuard             $memory     Memory budget guard.
-	 * @param StateRepository         $state      Cross-tick state owner.
-	 * @param ColdStartProcessor|null $cold_start Optional cold-start drain (TB-09). Null = warm-only.
-	 * @param Metrics|null            $metrics    Observability sink (TB-13). NullMetrics default for tests + back-compat.
+	 * @param DirtyQueue              $queue        Dirty-post queue.
+	 * @param EmbedJob                $embed_job    Embed-job runner.
+	 * @param MemoryGuard             $memory       Memory budget guard.
+	 * @param StateRepository         $state        Cross-tick state owner.
+	 * @param ColdStartProcessor|null $cold_start   Optional cold-start drain (TB-09). Null = warm-only.
+	 * @param Metrics|null            $metrics      Observability sink (TB-13). NullMetrics default for tests + back-compat.
+	 * @param VerificationPass|null   $verification Weekly drift check (TB-14). Null = skip phase 3.
 	 */
 	public function __construct(
 		DirtyQueue $queue,
@@ -61,14 +66,16 @@ class TickProcessor {
 		MemoryGuard $memory,
 		StateRepository $state,
 		?ColdStartProcessor $cold_start = null,
-		?Metrics $metrics = null
+		?Metrics $metrics = null,
+		?VerificationPass $verification = null
 	) {
-		$this->queue      = $queue;
-		$this->embed_job  = $embed_job;
-		$this->memory     = $memory;
-		$this->state      = $state;
-		$this->cold_start = $cold_start;
-		$this->metrics    = $metrics ?? new NullMetrics();
+		$this->queue        = $queue;
+		$this->embed_job    = $embed_job;
+		$this->memory       = $memory;
+		$this->state        = $state;
+		$this->cold_start   = $cold_start;
+		$this->metrics      = $metrics ?? new NullMetrics();
+		$this->verification = $verification;
 	}
 
 	/**
@@ -122,8 +129,11 @@ class TickProcessor {
 			++$processed;
 		}
 
-		// Phase 3: verification (placeholder — TB-14 fills).
-		// Future: if state['verification']['next_due'] <= time(), run a verification pass.
+		// Phase 3: verification (TB-14). Runs at most once per tick and skipped
+		// when memory is tight.
+		if ( ! $halted_for_memory && null !== $this->verification && $this->verification->is_due() ) {
+			$this->verification->run();
+		}
 
 		$this->persist_state();
 		$this->metrics->record_cron_tick(

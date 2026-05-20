@@ -226,6 +226,19 @@
 		} );
 	}
 
+	function runVerificationNow() {
+		var status = byId( 'semantic-posts-maint-status' );
+		if ( status ) {
+			status.textContent = '…';
+		}
+		post( cfg.actions.runVerification, {} ).then( function ( res ) {
+			var msg = ( res.json && res.json.data && res.json.data.message ) || 'Error';
+			if ( status ) {
+				status.textContent = msg;
+			}
+		} );
+	}
+
 	document.addEventListener( 'DOMContentLoaded', function () {
 		var modelEl    = byId( 'semantic-posts-model' );
 		var countEl    = byId( 'semantic-posts-count' );
@@ -234,6 +247,7 @@
 		var wipeBn     = byId( 'semantic-posts-wipe-reindex' );
 		var tickBn     = byId( 'semantic-posts-run-tick-now' );
 		var retryBn    = byId( 'semantic-posts-retry-failed' );
+		var verifyBn   = byId( 'semantic-posts-run-verification-now' );
 
 		if ( modelEl ) {
 			modelEl.addEventListener( 'change', refreshCost );
@@ -255,6 +269,9 @@
 		}
 		if ( retryBn ) {
 			retryBn.addEventListener( 'click', retryFailed );
+		}
+		if ( verifyBn ) {
+			verifyBn.addEventListener( 'click', runVerificationNow );
 		}
 
 		setupQualityToggle();
