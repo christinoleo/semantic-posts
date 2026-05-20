@@ -1,0 +1,37 @@
+{
+  "version": 1,
+  "description": "Quality-eval corpus: 100 posts across 5 categories, 20 per category. Used by docs/quality-evals/methodology.md. Categories chosen to be substantively different so cross-category recommendations are meaningful.",
+  "categories": [
+    {
+      "slug": "cooking",
+      "name": "Cooking & food",
+      "post_count": 20
+    },
+    {
+      "slug": "travel",
+      "name": "Travel",
+      "post_count": 20
+    },
+    {
+      "slug": "personal-finance",
+      "name": "Personal finance",
+      "post_count": 20
+    },
+    {
+      "slug": "tech-tutorials",
+      "name": "Tech tutorials",
+      "post_count": 20
+    },
+    {
+      "slug": "books-reading",
+      "name": "Books & reading",
+      "post_count": 20
+    }
+  ],
+  "posts": [
+    "TODO: 100 real WP-export rows go here at quality-eval time. The corpus is intentionally NOT committed pre-populated — the human evaluator imports a representative WP export (or the maintained internal corpus) before running the protocol.",
+    "Each post entry MUST include: { post_id, post_title, post_excerpt, post_content (≤1500 words), categories: [slug] }.",
+    "Categories MUST be the 5 above with exactly 20 posts each.",
+    "Bump the file to -v2.json if the structure changes."
+  ]
+}

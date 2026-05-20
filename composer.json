@@ -35,9 +35,6 @@
         "lint": "phpcs",
         "lint:fix": "phpcbf",
         "test": "phpunit",
-        "build": [
-            "@composer install --no-dev --optimize-autoloader",
-            "@php tools/build-zip.php"
-        ]
+        "build": "bash bin/build-zip.sh"
     }
 }
