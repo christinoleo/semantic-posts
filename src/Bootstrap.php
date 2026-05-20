@@ -203,9 +203,15 @@ final class Bootstrap {
 		add_action( 'wp_ajax_' . AjaxHandler::ACTION_RETRY_FAILED, array( $ajax, 'handle_retry_failed' ) );
 		add_action( 'wp_ajax_' . AjaxHandler::ACTION_RUN_VERIFICATION_NOW, array( $ajax, 'handle_run_verification_now' ) );
 
-		// TB-21: GitHub-releases auto-updater (admin context only — never on
-		// the public-facing path).
-		if ( is_admin() ) {
+		// TB-21: GitHub-releases auto-updater. Registered on every request — the
+		// filters only execute when WP refreshes the update transient (which is
+		// not a hot path on the public site), and the GitHub HTTP call is
+		// cached for 12h. Gating on `is_admin()` here previously broke updates
+		// triggered via WP-CLI (`wp plugin update`), which doesn't set the
+		// admin context. See v0.1.4 changelog.
+		// `defined()` guard: unit tests that construct Bootstrap in isolation
+		// don't load the main plugin file, so the constants may be missing.
+		if ( defined( 'SEMANTIC_POSTS_FILE' ) && defined( 'SEMANTIC_POSTS_VERSION' ) ) {
 			$updater = new GitHubUpdater(
 				SEMANTIC_POSTS_FILE,
 				SEMANTIC_POSTS_VERSION,

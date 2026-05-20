@@ -4,7 +4,7 @@ Tags: related posts, embeddings, openai, semantic search, recommendations
 Requires at least: 6.0
 Tested up to: 7.0
 Requires PHP: 8.0
-Stable tag: 0.1.3
+Stable tag: 0.1.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -134,6 +134,12 @@ metrics are preserved.
 4. Front-end widget rendered after the_content with featured + grid layout.
 
 == Changelog ==
+
+= 0.1.4 =
+* Fix: the GitHub auto-updater filter was gated on `is_admin()`, so
+  `wp plugin update semantic-posts` from WP-CLI never saw an upstream and
+  reported "already updated". Filter is now registered on every request;
+  the GitHub API call is still cached for 12 h so the cost is negligible.
 
 = 0.1.3 =
 * Fix: indexing tick was halting on the first iteration on hosts with the
