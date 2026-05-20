@@ -47,6 +47,7 @@ use SemanticPosts\Settings\SettingsRepository;
 use SemanticPosts\Verification\DriftNotice;
 use SemanticPosts\Verification\VerificationPass;
 use SemanticPosts\Embeddings\Vector;
+use SemanticPosts\CLI\Commands as CliCommands;
 
 /**
  * Plugin Bootstrap. See file header for the single-owner invariant.
@@ -196,6 +197,20 @@ final class Bootstrap {
 		add_action( 'wp_ajax_' . AjaxHandler::ACTION_RUN_INDEXING_NOW, array( $ajax, 'handle_run_indexing_now' ) );
 		add_action( 'wp_ajax_' . AjaxHandler::ACTION_RETRY_FAILED, array( $ajax, 'handle_retry_failed' ) );
 		add_action( 'wp_ajax_' . AjaxHandler::ACTION_RUN_VERIFICATION_NOW, array( $ajax, 'handle_run_verification_now' ) );
+
+		// TB-15: WP-CLI surface (registered only when running under WP-CLI).
+		if ( defined( 'WP_CLI' ) && constant( 'WP_CLI' ) && class_exists( '\\WP_CLI' ) ) {
+			$cli = new CliCommands(
+				$cold_start,
+				$wiper,
+				$tick_processor,
+				$verification,
+				$state,
+				$hash_detector,
+				$metrics
+			);
+			\WP_CLI::add_command( 'semantic-posts', $cli );
+		}
 	}
 
 	/**
