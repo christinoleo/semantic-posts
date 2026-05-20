@@ -5,12 +5,13 @@
  * Themes override by copying to `{theme}/semantic-posts/related-posts.php`.
  * Variables provided by Renderer:
  *
- *   @var int[]  $sp_item_ids        Resolved post IDs.
- *   @var string $sp_data_source     'semantic' | 'category-fallback' | 'none'.
- *   @var string $sp_heading_text    Filterable heading (already filtered).
- *   @var int    $sp_excerpt_length  Filterable excerpt length (default 160).
- *   @var array  $sp_item_classes    Filterable item-level CSS classes.
- *   @var string $sp_thumbnail_size  Filterable thumbnail size (default 'large').
+ *   @var int[]              $sp_item_ids        Resolved post IDs.
+ *   @var string             $sp_data_source     'semantic' | 'category-fallback' | 'none'.
+ *   @var array<int,string>  $sp_item_sources    Per-item override map post_id → source.
+ *   @var string             $sp_heading_text    Filterable heading (already filtered).
+ *   @var int                $sp_excerpt_length  Filterable excerpt length (default 160).
+ *   @var array              $sp_item_classes    Filterable item-level CSS classes.
+ *   @var string             $sp_thumbnail_size  Filterable thumbnail size (default 'large').
  *
  * @package SemanticPosts
  */
@@ -23,11 +24,15 @@ if ( empty( $sp_item_ids ) ) {
 
 $sp_featured_id = (int) array_shift( $sp_item_ids );
 $sp_grid_ids    = array_slice( $sp_item_ids, 0, 4 );
+if ( ! isset( $sp_item_sources ) || ! is_array( $sp_item_sources ) ) {
+	$sp_item_sources = array();
+}
+$sp_featured_source = $sp_item_sources[ $sp_featured_id ] ?? $sp_data_source;
 ?>
 <section class="semantic-posts" data-sp-source="<?php echo esc_attr( $sp_data_source ); ?>">
 	<h2 class="semantic-posts-heading"><?php echo esc_html( $sp_heading_text ); ?></h2>
 
-	<article class="semantic-posts-featured <?php echo esc_attr( implode( ' ', $sp_item_classes ) ); ?>" data-sp-item-source="<?php echo esc_attr( $sp_data_source ); ?>">
+	<article class="semantic-posts-featured <?php echo esc_attr( implode( ' ', $sp_item_classes ) ); ?>" data-sp-item-source="<?php echo esc_attr( $sp_featured_source ); ?>">
 		<a href="<?php echo esc_url( get_permalink( $sp_featured_id ) ); ?>">
 			<?php
 			if ( has_post_thumbnail( $sp_featured_id ) ) {
@@ -53,8 +58,11 @@ $sp_grid_ids    = array_slice( $sp_item_ids, 0, 4 );
 
 	<?php if ( ! empty( $sp_grid_ids ) ) : ?>
 		<ul class="semantic-posts-grid">
-			<?php foreach ( $sp_grid_ids as $sp_grid_id ) : ?>
-				<li class="semantic-posts-item <?php echo esc_attr( implode( ' ', $sp_item_classes ) ); ?>" data-sp-item-source="<?php echo esc_attr( $sp_data_source ); ?>">
+			<?php
+			foreach ( $sp_grid_ids as $sp_grid_id ) :
+				$sp_grid_source = $sp_item_sources[ $sp_grid_id ] ?? $sp_data_source;
+				?>
+				<li class="semantic-posts-item <?php echo esc_attr( implode( ' ', $sp_item_classes ) ); ?>" data-sp-item-source="<?php echo esc_attr( $sp_grid_source ); ?>">
 					<a href="<?php echo esc_url( get_permalink( $sp_grid_id ) ); ?>">
 						<?php
 						if ( has_post_thumbnail( $sp_grid_id ) ) {

@@ -21,6 +21,10 @@ final class SourceResolverTest extends TestCase {
 		if ( ! class_exists( \WP_Post::class ) ) {
 			eval( 'class WP_Post { public int $ID = 0; public string $post_type = "post"; }' );
 		}
+
+		// Default stubs: no semantic data, no language. Each test overrides as needed.
+		Functions\when( 'get_post_meta' )->justReturn( '' );
+		Functions\when( 'pll_get_post_language' )->justReturn( '' );
 	}
 
 	protected function tearDown(): void {
