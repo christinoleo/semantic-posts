@@ -1,0 +1,69 @@
+.semantic-posts-settings h2 {
+	margin-top: 1.5em;
+}
+
+.semantic-posts-settings fieldset label {
+	display: block;
+	margin-bottom: 0.25em;
+}
+
+.semantic-posts-key-status {
+	margin-left: 0.5em;
+	font-size: 0.9em;
+}
+
+.semantic-posts-key-status.is-success {
+	color: #1a7f37;
+}
+
+.semantic-posts-key-status.is-error {
+	color: #b32d2e;
+}
+
+.semantic-posts-key-status.is-pending {
+	color: #6c757d;
+}
+
+.semantic-posts-cost {
+	background: #f6f7f7;
+	border-left: 4px solid #2271b1;
+	padding: 0.5em 1em;
+	margin: 0.5em 0;
+	font-family: monospace;
+}
+
+.semantic-posts-progress {
+	margin-top: 1em;
+}
+
+.semantic-posts-progress-bar {
+	background: #e5e7eb;
+	border-radius: 4px;
+	height: 12px;
+	overflow: hidden;
+	width: 480px;
+	max-width: 100%;
+}
+
+.semantic-posts-progress-fill {
+	background: #2271b1;
+	display: block;
+	height: 100%;
+	transition: width 0.4s ease;
+}
+
+.semantic-posts-progress-label {
+	margin-top: 0.5em;
+	font-size: 0.9em;
+	color: #50575e;
+}
+
+.semantic-posts-bulk-status {
+	margin-left: 0.5em;
+	font-size: 0.9em;
+	color: #50575e;
+}
+
+.semantic-posts-quality-fields[hidden] {
+	display: none;
+}

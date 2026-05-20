@@ -38,7 +38,11 @@ register_activation_hook(
 			);
 		}
 		if ( class_exists( \SemanticPosts\Indexing\CronRegistration::class ) ) {
-			\SemanticPosts\Indexing\CronRegistration::activate();
+			$frequency = 'hourly';
+			if ( class_exists( \SemanticPosts\Settings\SettingsRepository::class ) ) {
+				$frequency = ( new \SemanticPosts\Settings\SettingsRepository() )->cron_frequency();
+			}
+			\SemanticPosts\Indexing\CronRegistration::activate( $frequency );
 		}
 	}
 );

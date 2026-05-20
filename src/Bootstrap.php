@@ -18,6 +18,7 @@ use SemanticPosts\Embeddings\IndexableTextBuilder;
 use SemanticPosts\Embeddings\OpenAIProvider;
 use SemanticPosts\Indexing\CleanupRouter;
 use SemanticPosts\Indexing\ColdStartProcessor;
+use SemanticPosts\Indexing\CronRegistration;
 use SemanticPosts\Indexing\DirtyQueue;
 use SemanticPosts\Indexing\EmbedJob;
 use SemanticPosts\Indexing\HashDiffDetector;
@@ -27,6 +28,7 @@ use SemanticPosts\Indexing\SavePostHandler;
 use SemanticPosts\Indexing\StateRepository;
 use SemanticPosts\Indexing\TickProcessor;
 use SemanticPosts\Indexing\UnindexedQueue;
+use SemanticPosts\Indexing\Wiper;
 use SemanticPosts\Lifecycle\BackupFilter;
 use SemanticPosts\Ranking\ModeFactory;
 use SemanticPosts\Render\ContentFilter;
@@ -34,6 +36,10 @@ use SemanticPosts\Render\Renderer;
 use SemanticPosts\Render\Shortcode;
 use SemanticPosts\Render\SourceResolver;
 use SemanticPosts\Security\ApiKeyStorage;
+use SemanticPosts\Security\ApiKeyValidator;
+use SemanticPosts\Settings\AjaxHandler;
+use SemanticPosts\Settings\CorpusFloorNotice;
+use SemanticPosts\Settings\CostEstimator;
 use SemanticPosts\Settings\SettingsPage;
 use SemanticPosts\Settings\SettingsRepository;
 
@@ -80,20 +86,21 @@ final class Bootstrap {
 
 		add_action( 'init', array( $this, 'load_textdomain' ) );
 
-		$settings  = new SettingsRepository();
-		$resolver  = new SourceResolver();
-		$renderer  = new Renderer( $resolver );
-		$shortcode = new Shortcode( $renderer );
-		$content   = new ContentFilter( $renderer, $shortcode, $settings );
-		$page      = new SettingsPage( $settings );
-		$backup    = new BackupFilter();
+		$settings     = new SettingsRepository();
+		$resolver     = new SourceResolver();
+		$renderer     = new Renderer( $resolver );
+		$shortcode    = new Shortcode( $renderer );
+		$content      = new ContentFilter( $renderer, $shortcode, $settings );
+		$key_storage  = new ApiKeyStorage();
+		$page         = new SettingsPage( $settings, $key_storage );
+		$backup       = new BackupFilter();
+		$floor_notice = new CorpusFloorNotice( $settings );
 
 		// Indexing pipeline (TB-05/06/07/08).
 		$builder         = new IndexableTextBuilder();
 		$rate_limiter    = new RateLimiter();
 		$hash_detector   = new HashDiffDetector( $builder );
 		$state           = new StateRepository();
-		$key_storage     = new ApiKeyStorage();
 		$provider        = new OpenAIProvider( $key_storage );
 		$neighbors       = new NeighborStore();
 		$mode_factory    = new ModeFactory();
@@ -115,7 +122,24 @@ final class Bootstrap {
 		$cold_start      = new ColdStartProcessor( $unindexed_queue, $embed_job, $crawler, $state, $memory_guard );
 		$tick_processor  = new TickProcessor( $dirty_queue, $embed_job, $memory_guard, $state, $cold_start );
 
+		// TB-12 admin surface.
+		$estimator     = new CostEstimator();
+		$key_validator = new ApiKeyValidator();
+		$wiper         = new Wiper( $state );
+		$ajax          = new AjaxHandler(
+			$settings,
+			$estimator,
+			$key_storage,
+			$key_validator,
+			$cold_start,
+			$wiper,
+			$unindexed_queue
+		);
+
 		add_action( 'admin_menu', array( $page, 'register_menu' ) );
+		add_action( 'admin_enqueue_scripts', array( $page, 'enqueue_assets' ) );
+		add_action( 'admin_notices', array( $floor_notice, 'maybe_render' ) );
+		add_filter( 'cron_schedules', array( CronRegistration::class, 'register_intervals' ) ); // phpcs:ignore WordPress.WP.CronInterval.ChangeDetected
 		add_filter( 'the_content', array( $content, 'maybe_append' ), 20 );
 		add_filter( 'semantic_posts_exclude_from_backup', array( $backup, 'default_excluded' ) );
 		add_shortcode( Shortcode::TAG, array( $shortcode, 'render' ) );
@@ -127,7 +151,13 @@ final class Bootstrap {
 		add_action( TickProcessor::HOOK, array( $tick_processor, 'run' ) );
 		add_action( SavePostHandler::IMMEDIATE_EMBED_HOOK, array( $save_handler, 'handle_immediate_embed' ) );
 
-		// Subsequent slices (TB-08+) extend this with crawler/observability hooks.
+		// TB-12 AJAX endpoints (logged-in only). Each handler re-checks cap + nonce.
+		add_action( 'wp_ajax_' . AjaxHandler::ACTION_COST_PREVIEW, array( $ajax, 'handle_cost_preview' ) );
+		add_action( 'wp_ajax_' . AjaxHandler::ACTION_VALIDATE_KEY, array( $ajax, 'handle_validate_api_key' ) );
+		add_action( 'wp_ajax_' . AjaxHandler::ACTION_START_INDEXING, array( $ajax, 'handle_start_indexing' ) );
+		add_action( 'wp_ajax_' . AjaxHandler::ACTION_PROGRESS, array( $ajax, 'handle_progress' ) );
+		add_action( 'wp_ajax_' . AjaxHandler::ACTION_WIPE_REINDEX, array( $ajax, 'handle_wipe_and_reindex' ) );
+		add_action( 'wp_ajax_' . AjaxHandler::ACTION_DISMISS_FLOOR, array( $ajax, 'handle_dismiss_floor_notice' ) );
 	}
 
 	/**

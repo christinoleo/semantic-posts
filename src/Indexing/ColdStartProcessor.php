@@ -84,6 +84,50 @@ class ColdStartProcessor {
 	}
 
 	/**
+	 * Kick off a cold-start run. Resets the cursor + transitions phase to
+	 * bootstrap and schedules a single tick event so the user sees progress
+	 * without waiting for the next hourly cron.
+	 *
+	 * Returns whether the start was actually triggered. False = there was no
+	 * pending work, so the call is a no-op (UI can show "nothing to index").
+	 */
+	public function start(): bool {
+		if ( 0 === $this->queue->count() ) {
+			return false;
+		}
+		$state                                    = $this->state->read();
+		$state['cold_start']['phase']             = self::PHASE_BOOTSTRAP;
+		$state['cold_start']['last_processed_id'] = 0;
+		$state['cold_start']['started']           = time();
+		unset( $state['cold_start']['completed'] );
+		$this->state->write( $state );
+
+		if ( function_exists( 'wp_schedule_single_event' ) ) {
+			wp_schedule_single_event( time() + 5, TickProcessor::HOOK );
+		}
+
+		return true;
+	}
+
+	/**
+	 * Snapshot used by the admin progress AJAX endpoint.
+	 *
+	 * @return array{phase:string, last_processed_id:int, indexed_count:int, pending_count:int, started_at:int|null, completed_at:int|null}
+	 */
+	public function progress(): array {
+		$state = $this->state->read();
+		$cold  = is_array( $state['cold_start'] ?? null ) ? $state['cold_start'] : array();
+		return array(
+			'phase'             => (string) ( $cold['phase'] ?? self::PHASE_IDLE ),
+			'last_processed_id' => (int) ( $cold['last_processed_id'] ?? 0 ),
+			'indexed_count'     => $this->crawler_indexed_count(),
+			'pending_count'     => $this->queue->count(),
+			'started_at'        => isset( $cold['started'] ) ? (int) $cold['started'] : null,
+			'completed_at'      => isset( $cold['completed'] ) ? (int) $cold['completed'] : null,
+		);
+	}
+
+	/**
 	 * Process up to POSTS_PER_BATCH unindexed posts, persisting progress
 	 * after each so a killed tick resumes mid-batch.
 	 *
