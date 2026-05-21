@@ -4,7 +4,7 @@ Tags: related posts, embeddings, openai, semantic search, recommendations
 Requires at least: 6.0
 Tested up to: 7.0
 Requires PHP: 8.0
-Stable tag: 0.2.0
+Stable tag: 0.2.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -160,6 +160,15 @@ metrics are preserved.
 
 == Changelog ==
 
+= 0.2.1 =
+* Build: include the bundled Freemius SDK in the release zip.
+  v0.2.0's `bin/build-zip.sh` only copied `src/ templates/ assets/
+  languages/ includes/` and silently dropped `freemius/`, so sites
+  that auto-updated from 0.1.x to 0.2.0 saw `sp_fs()` return null
+  and the paywall banner / upgrade CTA never rendered. The script
+  now includes `freemius/` and prunes its non-runtime dev files
+  (gulp, README, etc.) for a smaller zip.
+
 = 0.2.0 =
 * Feature: free-tier / Pro split. Sites with up to 200 indexed posts are
   free indefinitely; beyond that, a Pro license is required to keep
@@ -224,6 +233,10 @@ metrics are preserved.
   benchmark workflow.
 
 == Upgrade Notice ==
+
+= 0.2.1 =
+Critical follow-up to 0.2.0: the release zip was missing the bundled
+Freemius SDK so license features didn't activate. Update immediately.
 
 = 0.2.0 =
 Major release — introduces a free-tier limit (200 indexed posts) and

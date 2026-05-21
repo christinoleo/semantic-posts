@@ -44,12 +44,24 @@ for f in semantic-posts.php uninstall.php readme.txt LICENSE; do
   fi
 done
 
-# Code + assets + i18n.
-for d in src templates assets languages includes; do
+# Code + assets + i18n + bundled SDKs.
+for d in src templates assets languages includes freemius; do
   if [ -d "$d" ]; then
     cp -R "$d" "$PLUGIN_DIR/"
   fi
 done
+
+# Trim non-runtime Freemius files (dev tooling, docs) — keep functional code.
+if [ -d "$PLUGIN_DIR/freemius" ]; then
+  rm -rf "$PLUGIN_DIR/freemius/.git" "$PLUGIN_DIR/freemius/.github" \
+         "$PLUGIN_DIR/freemius/gulptasks" "$PLUGIN_DIR/freemius/gulpfile.js" \
+         "$PLUGIN_DIR/freemius/package.json" "$PLUGIN_DIR/freemius/package-lock.json" \
+         "$PLUGIN_DIR/freemius/composer.lock" "$PLUGIN_DIR/freemius/phpstan.neon" \
+         "$PLUGIN_DIR/freemius/phpcompat.xml" "$PLUGIN_DIR/freemius/CONTRIBUTING.md" \
+         "$PLUGIN_DIR/freemius/README.md" "$PLUGIN_DIR/freemius/.editorconfig" \
+         "$PLUGIN_DIR/freemius/.example.env" "$PLUGIN_DIR/freemius/.gitattributes" \
+         "$PLUGIN_DIR/freemius/.gitignore"
+fi
 
 echo "==> Installing production composer dependencies..."
 cp composer.json "$PLUGIN_DIR/"
