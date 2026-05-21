@@ -4,7 +4,7 @@ Tags: related posts, embeddings, openai, semantic search, recommendations
 Requires at least: 6.0
 Tested up to: 7.0
 Requires PHP: 8.0
-Stable tag: 0.2.1
+Stable tag: 0.2.2
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -160,6 +160,15 @@ metrics are preserved.
 
 == Changelog ==
 
+= 0.2.2 =
+* Fix: suppress the "Download latest pro version" CTA that appeared
+  after license activation. The plugin uses a single-codebase
+  freemium model — Pro features live inline in the same zip,
+  gated by license-check `if` blocks. The `is_premium` SDK flag
+  is now `true` so Freemius no longer expects a separate premium
+  build deployed in its release system. Free users still work
+  unchanged (`is_premium_only: false`).
+
 = 0.2.1 =
 * Build: include the bundled Freemius SDK in the release zip.
   v0.2.0's `bin/build-zip.sh` only copied `src/ templates/ assets/
@@ -233,6 +242,11 @@ metrics are preserved.
   benchmark workflow.
 
 == Upgrade Notice ==
+
+= 0.2.2 =
+Suppresses a misleading "Download latest pro version" CTA shown
+after license activation on 0.2.0/0.2.1. Cosmetic only — no
+functional change to gating or indexing.
 
 = 0.2.1 =
 Critical follow-up to 0.2.0: the release zip was missing the bundled

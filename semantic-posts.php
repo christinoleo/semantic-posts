@@ -3,7 +3,7 @@
  * Plugin Name:       SemanticPosts
  * Plugin URI:        https://github.com/christinoleo/semantic-posts
  * Description:       Related posts via semantic embeddings. Precomputed at index time, served from postmeta cache.
- * Version:           0.2.1
+ * Version:           0.2.2
  * Requires at least: 6.0
  * Requires PHP:      8.0
  * Author:            Leonardo Christino
@@ -17,7 +17,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'SEMANTIC_POSTS_VERSION', '0.2.1' );
+define( 'SEMANTIC_POSTS_VERSION', '0.2.2' );
 define( 'SEMANTIC_POSTS_DIR', plugin_dir_path( __FILE__ ) );
 define( 'SEMANTIC_POSTS_URL', plugin_dir_url( __FILE__ ) );
 define( 'SEMANTIC_POSTS_FILE', __FILE__ );
@@ -51,7 +51,18 @@ if ( ! function_exists( 'sp_fs' ) && ! ( defined( 'SEMANTIC_POSTS_BYPASS_FREEMIU
 					'slug'           => 'semantic-posts',
 					'type'           => 'plugin',
 					'public_key'     => 'pk_67c2047c0f13ef4399650e5bf10b9',
-					'is_premium'     => false,
+					// is_premium: true marks this codebase as already containing
+					// the Pro features (gated via `if (is_paying())` checks). The
+					// free tier is enforced by our own PaywallGate, not by
+					// Freemius's free/premium split-build mechanism. This
+					// suppresses the "Download latest pro version" CTA that
+					// otherwise tries to fetch a separate zip from Freemius's
+					// deployment system (which we don't use — distribution is
+					// via GitHub Releases).
+					'is_premium'     => true,
+					// Without a paid plan the plugin still functions (free tier
+					// gating is our responsibility, not Freemius's).
+					'is_premium_only' => false,
 					'has_addons'     => false,
 					'has_paid_plans' => true,
 					// anonymous_mode: don't force the opt-in modal on activation;
