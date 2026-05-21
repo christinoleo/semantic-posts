@@ -4,7 +4,7 @@ Tags: related posts, embeddings, openai, semantic search, recommendations
 Requires at least: 6.0
 Tested up to: 7.0
 Requires PHP: 8.0
-Stable tag: 0.1.4
+Stable tag: 0.1.5
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -135,6 +135,15 @@ metrics are preserved.
 
 == Changelog ==
 
+= 0.1.5 =
+* Feature: minimal frontend stylesheet (`assets/css/frontend.css`,
+  ~1 KB gzipped) enqueued on the public site so the widget looks decent
+  out-of-box. Structural only — grid, hover lift, image sizing, radius —
+  with five CSS variables (`--sp-gap`, `--sp-radius`, `--sp-shadow`,
+  `--sp-shadow-hover`, `--sp-accent`) for trivial restyling. Colors and
+  typography still inherit from the theme. Opt out completely with
+  `add_filter( 'semantic_posts_enqueue_styles', '__return_false' );`.
+
 = 0.1.4 =
 * Fix: the GitHub auto-updater filter was gated on `is_admin()`, so
   `wp plugin update semantic-posts` from WP-CLI never saw an upstream and
@@ -170,6 +179,11 @@ metrics are preserved.
   benchmark workflow.
 
 == Upgrade Notice ==
+
+= 0.1.5 =
+Adds a small structural stylesheet so the widget looks polished without
+manual CSS. Dequeue with the `semantic_posts_enqueue_styles` filter if
+your theme already styles it.
 
 = 0.1.3 =
 Important — fixes the cold-start tick halting on default-config hosts and a

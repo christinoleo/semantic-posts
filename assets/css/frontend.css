@@ -1,0 +1,152 @@
+/**
+ * SemanticPosts — minimal frontend styles.
+ *
+ * Structural-only: grid, spacing, image sizing, hover lift. No colors or
+ * fonts — those inherit from the theme so we never fight its design system.
+ * Customize via the five CSS variables below, or dequeue entirely with:
+ *
+ *   add_filter( 'semantic_posts_enqueue_styles', '__return_false' );
+ */
+
+.semantic-posts {
+	--sp-gap: 1.25rem;
+	--sp-radius: 12px;
+	--sp-shadow: 0 1px 2px rgba(0, 0, 0, .04), 0 8px 24px rgba(0, 0, 0, .06);
+	--sp-shadow-hover: 0 2px 6px rgba(0, 0, 0, .06), 0 14px 36px rgba(0, 0, 0, .10);
+	--sp-accent: currentColor;
+
+	margin: 3rem 0 1rem;
+	padding-top: 2rem;
+	border-top: 1px solid rgba(128, 128, 128, .2);
+}
+
+.semantic-posts-heading {
+	margin: 0 0 1.25rem;
+	padding-left: .9rem;
+	position: relative;
+}
+
+.semantic-posts-heading::before {
+	content: "";
+	position: absolute;
+	left: 0;
+	top: .25em;
+	bottom: .25em;
+	width: 4px;
+	border-radius: 2px;
+	background: var(--sp-accent);
+	opacity: .6;
+}
+
+.semantic-posts-featured {
+	display: block;
+	position: relative;
+	border-radius: var(--sp-radius);
+	overflow: hidden;
+	box-shadow: var(--sp-shadow);
+	margin-bottom: var(--sp-gap);
+	transition: transform .25s ease, box-shadow .25s ease;
+}
+
+.semantic-posts-featured:hover {
+	transform: translateY(-3px);
+	box-shadow: var(--sp-shadow-hover);
+}
+
+.semantic-posts-featured a {
+	display: block;
+	color: inherit;
+	text-decoration: none;
+}
+
+.semantic-posts-featured img {
+	width: 100%;
+	height: auto;
+	max-height: 360px;
+	object-fit: cover;
+	display: block;
+}
+
+.semantic-posts-featured-title {
+	margin: 1rem 1.25rem .5rem;
+	line-height: 1.25;
+}
+
+.semantic-posts-featured-excerpt {
+	margin: 0 1.25rem 1.25rem;
+	opacity: .75;
+	line-height: 1.5;
+}
+
+.semantic-posts-grid {
+	list-style: none;
+	padding: 0;
+	margin: 0;
+	display: grid;
+	gap: var(--sp-gap);
+	grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+}
+
+.semantic-posts-item {
+	list-style: none;
+	border-radius: var(--sp-radius);
+	overflow: hidden;
+	box-shadow: var(--sp-shadow);
+	transition: transform .25s ease, box-shadow .25s ease;
+}
+
+.semantic-posts-item::before {
+	content: none !important;
+}
+
+.semantic-posts-item:hover {
+	transform: translateY(-2px);
+	box-shadow: var(--sp-shadow-hover);
+}
+
+.semantic-posts-item a {
+	display: block;
+	color: inherit;
+	text-decoration: none;
+}
+
+.semantic-posts-item img {
+	width: 100%;
+	height: 150px;
+	object-fit: cover;
+	display: block;
+}
+
+.semantic-posts-item-title {
+	margin: .75rem .9rem 1rem;
+	line-height: 1.35;
+}
+
+.semantic-posts[data-sp-source="category-fallback"] .semantic-posts-heading::after {
+	content: "category match";
+	font-size: .65rem;
+	font-weight: 600;
+	text-transform: uppercase;
+	letter-spacing: .05em;
+	padding: .15rem .5rem;
+	margin-left: .75rem;
+	background: rgba(128, 128, 128, .15);
+	border-radius: 999px;
+	vertical-align: middle;
+	opacity: .7;
+}
+
+@media (max-width: 600px) {
+	.semantic-posts {
+		margin: 2rem 0 .5rem;
+	}
+
+	.semantic-posts-grid {
+		grid-template-columns: repeat(2, 1fr);
+		gap: .9rem;
+	}
+
+	.semantic-posts-item img {
+		height: 110px;
+	}
+}

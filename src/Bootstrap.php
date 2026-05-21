@@ -37,6 +37,7 @@ use SemanticPosts\Observability\ObservabilityPanel;
 use SemanticPosts\Observability\StateMetrics;
 use SemanticPosts\Ranking\ModeFactory;
 use SemanticPosts\Render\ContentFilter;
+use SemanticPosts\Render\FrontendAssets;
 use SemanticPosts\Render\Renderer;
 use SemanticPosts\Render\Shortcode;
 use SemanticPosts\Render\SourceResolver;
@@ -103,6 +104,7 @@ final class Bootstrap {
 		$renderer     = new Renderer( $resolver );
 		$shortcode    = new Shortcode( $renderer );
 		$content      = new ContentFilter( $renderer, $shortcode, $settings );
+		$assets       = new FrontendAssets();
 		$key_storage  = new ApiKeyStorage();
 		$backup       = new BackupFilter();
 		$floor_notice = new CorpusFloorNotice( $settings );
@@ -182,6 +184,7 @@ final class Bootstrap {
 		add_action( 'admin_notices', array( $drift_notice, 'maybe_render' ) );
 		add_filter( 'cron_schedules', array( CronRegistration::class, 'register_intervals' ) ); // phpcs:ignore WordPress.WP.CronInterval.ChangeDetected
 		add_filter( 'the_content', array( $content, 'maybe_append' ), 20 );
+		add_action( 'wp_enqueue_scripts', array( $assets, 'enqueue' ) );
 		add_filter( 'semantic_posts_exclude_from_backup', array( $backup, 'default_excluded' ) );
 		add_shortcode( Shortcode::TAG, array( $shortcode, 'render' ) );
 

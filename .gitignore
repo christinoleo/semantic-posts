@@ -15,6 +15,7 @@ composer.phar
 .env.*
 !.env.example
 secrets/
+demo/
 *.pem
 *.key
 id_rsa*
