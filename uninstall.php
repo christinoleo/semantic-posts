@@ -21,6 +21,20 @@
 
 defined( 'WP_UNINSTALL_PLUGIN' ) || exit;
 
+// Freemius cleanup: invoke the SDK's uninstall hook so its account/option
+// rows are removed alongside ours. Wrapped in a function_exists guard because
+// the SDK is only loaded after the main plugin file runs sp_fs(); when
+// WordPress dispatches uninstall it loads this file directly.
+if ( file_exists( __DIR__ . '/freemius/start.php' ) ) {
+	require_once __DIR__ . '/semantic-posts.php';
+	if ( function_exists( 'sp_fs' ) ) {
+		$sp_fs_instance = sp_fs();
+		if ( is_object( $sp_fs_instance ) && method_exists( $sp_fs_instance, '_uninstall_plugin_event' ) ) {
+			$sp_fs_instance->_uninstall_plugin_event();
+		}
+	}
+}
+
 global $wpdb;
 
 // Single DELETE covers every plugin-owned postmeta key. The `_sp_%` LIKE pattern

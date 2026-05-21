@@ -18,6 +18,12 @@ if ( ! defined( 'ABSPATH' ) ) {
 	define( 'ABSPATH', dirname( __DIR__ ) . '/' );
 }
 
+// Bypass Freemius SDK during unit tests — it requires a full WP runtime and
+// network access which the Brain\Monkey environment does not provide.
+if ( ! defined( 'SEMANTIC_POSTS_BYPASS_FREEMIUS' ) ) {
+	define( 'SEMANTIC_POSTS_BYPASS_FREEMIUS', true );
+}
+
 $autoload = dirname( __DIR__ ) . '/vendor/autoload.php';
 if ( ! file_exists( $autoload ) ) {
 	fwrite( STDERR, "vendor/autoload.php missing — run `composer install` first.\n" );

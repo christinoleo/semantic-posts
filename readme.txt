@@ -4,7 +4,7 @@ Tags: related posts, embeddings, openai, semantic search, recommendations
 Requires at least: 6.0
 Tested up to: 7.0
 Requires PHP: 8.0
-Stable tag: 0.1.5
+Stable tag: 0.2.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -33,6 +33,31 @@ during page rendering**.
 * WP-CLI: `wp semantic-posts {index|reindex|process-dirty|verify|retry-failed|status}`.
 * AR-14: zero jQuery on the render path; admin assets are vanilla JS.
 * AR-12: every AJAX endpoint verifies nonce + `manage_options` capability.
+
+= Pricing =
+
+SemanticPosts is **free for sites with up to 200 indexed posts** — enough
+to cover most personal blogs and small businesses without limits. Above
+that count, a Pro subscription is required to keep adding new posts to
+the graph. Existing posts always keep working regardless of license
+state.
+
+* **Free** — index up to 200 posts.
+* **Pro** — $4.99/month, $29.99/year, or $89.99 lifetime. Unlimited
+  posts, no recurring OpenAI surcharges (you continue paying OpenAI
+  directly for embeddings; the Pro fee covers maintenance of the
+  plugin, the Similarity Graph algorithms, and updates).
+
+= License management =
+
+License keys are issued and validated through Freemius, the licensing
+platform used by hundreds of WordPress plugins (WP Mail SMTP,
+MonsterInsights, etc.). The plugin's behavior:
+
+* No personal data leaves the site unless you explicitly opt in to
+  Freemius's analytics during plugin setup (anonymous-mode default).
+* License checks are made over HTTPS once per day and cached locally.
+* No checks happen at page-render time.
 
 = Data sent to OpenAI =
 
@@ -135,6 +160,26 @@ metrics are preserved.
 
 == Changelog ==
 
+= 0.2.0 =
+* Feature: free-tier / Pro split. Sites with up to 200 indexed posts are
+  free indefinitely; beyond that, a Pro license is required to keep
+  adding new posts. Existing widgets keep rendering regardless of
+  license state.
+* Feature: Freemius SDK integration. Licensing, checkout, and updates
+  are now handled through Freemius's WordPress-plugin-specific
+  marketplace. Pro pricing: $4.99/month, $29.99/year, or $89.99
+  lifetime.
+* Feature: Settings page now shows a "free tier" status banner with the
+  current indexed-post count vs the 200-post limit, plus a one-click
+  upgrade CTA when nearing or past the limit.
+* Internal: new `PaywallGate` class encapsulates the gate logic; new
+  `semantic_posts_free_post_limit` filter lets hosts override the cap.
+  ColdStartProcessor halts gracefully on the gate — no posts are
+  silently lost; they simply stay in `UnindexedQueue` until upgrade.
+* Privacy: opt-in analytics are off by default (`anonymous_mode`).
+  Users can opt in later from the Settings page if they want to share
+  install statistics with the maintainer.
+
 = 0.1.5 =
 * Feature: minimal frontend stylesheet (`assets/css/frontend.css`,
   ~1 KB gzipped) enqueued on the public site so the widget looks decent
@@ -179,6 +224,13 @@ metrics are preserved.
   benchmark workflow.
 
 == Upgrade Notice ==
+
+= 0.2.0 =
+Major release — introduces a free-tier limit (200 indexed posts) and
+Pro licensing via Freemius. Sites under the limit are unaffected.
+Sites already above 200 indexed posts will continue serving widgets
+but new posts won't be added to the graph until a Pro license is
+activated. Migration is fully backward-compatible.
 
 = 0.1.5 =
 Adds a small structural stylesheet so the widget looks polished without

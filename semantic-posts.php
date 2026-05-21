@@ -3,7 +3,7 @@
  * Plugin Name:       SemanticPosts
  * Plugin URI:        https://github.com/christinoleo/semantic-posts
  * Description:       Related posts via semantic embeddings. Precomputed at index time, served from postmeta cache.
- * Version:           0.1.5
+ * Version:           0.2.0
  * Requires at least: 6.0
  * Requires PHP:      8.0
  * Author:            Leonardo Christino
@@ -17,7 +17,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'SEMANTIC_POSTS_VERSION', '0.1.5' );
+define( 'SEMANTIC_POSTS_VERSION', '0.2.0' );
 define( 'SEMANTIC_POSTS_DIR', plugin_dir_path( __FILE__ ) );
 define( 'SEMANTIC_POSTS_URL', plugin_dir_url( __FILE__ ) );
 define( 'SEMANTIC_POSTS_FILE', __FILE__ );
@@ -25,6 +25,51 @@ define( 'SEMANTIC_POSTS_FILE', __FILE__ );
 $semantic_posts_autoload = SEMANTIC_POSTS_DIR . 'vendor/autoload.php';
 if ( file_exists( $semantic_posts_autoload ) ) {
 	require_once $semantic_posts_autoload;
+}
+
+/**
+ * Freemius SDK bootstrap. Must initialize BEFORE Bootstrap::registerHooks so
+ * that `sp_fs()->is_paying()` is callable from gate code paths.
+ *
+ * Public IDs only — `plugin_id` and `plugin_public_key` are safe to commit
+ * (analogous to Stripe `pk_live_…`). The signing secret lives on Freemius's
+ * servers; license responses are verified via signature, not the plugin's
+ * possession of any secret.
+ */
+if ( ! function_exists( 'sp_fs' ) && ! ( defined( 'SEMANTIC_POSTS_BYPASS_FREEMIUS' ) && SEMANTIC_POSTS_BYPASS_FREEMIUS ) ) {
+	function sp_fs() {
+		global $sp_fs;
+		if ( ! isset( $sp_fs ) ) {
+			$freemius_start = SEMANTIC_POSTS_DIR . 'freemius/start.php';
+			if ( ! file_exists( $freemius_start ) ) {
+				return null;
+			}
+			require_once $freemius_start;
+			$sp_fs = fs_dynamic_init(
+				array(
+					'id'             => '30197',
+					'slug'           => 'semantic-posts',
+					'type'           => 'plugin',
+					'public_key'     => 'pk_67c2047c0f13ef4399650e5bf10b9',
+					'is_premium'     => false,
+					'has_addons'     => false,
+					'has_paid_plans' => true,
+					// anonymous_mode: don't force the opt-in modal on activation;
+					// the plugin works immediately and users can opt in to analytics
+					// later from Settings → SemanticPosts.
+					'anonymous_mode' => true,
+					'menu'           => array(
+						'slug'    => 'semantic-posts',
+						'support' => false,
+					),
+					'is_live'        => true,
+				)
+			);
+		}
+		return $sp_fs;
+	}
+	sp_fs();
+	do_action( 'sp_fs_loaded' );
 }
 
 register_activation_hook(

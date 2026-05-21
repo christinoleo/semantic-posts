@@ -50,17 +50,39 @@ final class SettingsPage {
 	private ?ObservabilityPanel $panel;
 
 	/**
-	 * @param SettingsRepository      $repo        Settings repository.
-	 * @param ApiKeyStorage           $key_storage API key storage adapter (used to
-	 *                                             decide whether the placeholder
-	 *                                             signals "key on file").
-	 * @param ObservabilityPanel|null $panel       Observability surface appended below
-	 *                                             the form (TB-13). Optional — back-compat.
+	 * @var \SemanticPosts\Paywall\PaywallGate|null
 	 */
-	public function __construct( SettingsRepository $repo, ApiKeyStorage $key_storage, ?ObservabilityPanel $panel = null ) {
+	private ?\SemanticPosts\Paywall\PaywallGate $gate;
+
+	/**
+	 * @var \SemanticPosts\Crawler\Crawler|null
+	 */
+	private ?\SemanticPosts\Crawler\Crawler $crawler;
+
+	/**
+	 * @param SettingsRepository                      $repo        Settings repository.
+	 * @param ApiKeyStorage                           $key_storage API key storage adapter (used to
+	 *                                                             decide whether the placeholder
+	 *                                                             signals "key on file").
+	 * @param ObservabilityPanel|null                 $panel       Observability surface appended below
+	 *                                                             the form (TB-13). Optional — back-compat.
+	 * @param \SemanticPosts\Paywall\PaywallGate|null $gate    Paywall status (optional —
+	 *                                                          back-compat for tests that
+	 *                                                          don't exercise paywall UI).
+	 * @param \SemanticPosts\Crawler\Crawler|null     $crawler Source of indexed-post count.
+	 */
+	public function __construct(
+		SettingsRepository $repo,
+		ApiKeyStorage $key_storage,
+		?ObservabilityPanel $panel = null,
+		?\SemanticPosts\Paywall\PaywallGate $gate = null,
+		?\SemanticPosts\Crawler\Crawler $crawler = null
+	) {
 		$this->repo        = $repo;
 		$this->key_storage = $key_storage;
 		$this->panel       = $panel;
+		$this->gate        = $gate;
+		$this->crawler     = $crawler;
 	}
 
 	/**
@@ -172,6 +194,8 @@ final class SettingsPage {
 		?>
 		<div class="wrap semantic-posts-settings">
 			<h1><?php echo esc_html__( 'SemanticPosts Settings', 'semantic-posts' ); ?></h1>
+
+			<?php $this->render_paywall_status(); ?>
 
 			<?php if ( $saved ) : ?>
 				<div class="notice notice-success"><p><?php esc_html_e( 'Settings saved.', 'semantic-posts' ); ?></p></div>
@@ -337,6 +361,74 @@ final class SettingsPage {
 				$this->panel->render();
 			}
 			?>
+		</div>
+		<?php
+	}
+
+	/**
+	 * Render the free-tier paywall banner above the form. Three states:
+	 *  - paying    : success badge confirming Pro is active
+	 *  - approaching : info banner once 80% of the limit is used
+	 *  - locked    : warning banner with upgrade CTA when the gate is engaged
+	 */
+	private function render_paywall_status(): void {
+		if ( null === $this->gate || null === $this->crawler ) {
+			return;
+		}
+		$count   = $this->crawler->indexed_count();
+		$limit   = $this->gate->limit();
+		$paying  = $this->gate->is_paying();
+		$locked  = $this->gate->is_locked( $count );
+		$upgrade = function_exists( 'sp_fs' ) && is_object( sp_fs() ) && method_exists( sp_fs(), 'get_upgrade_url' )
+			? (string) sp_fs()->get_upgrade_url()
+			: '';
+
+		if ( $paying ) {
+			?>
+			<div class="notice notice-success" data-sp-notice="paywall-pro-active">
+				<p>
+					<strong><?php esc_html_e( 'Pro active.', 'semantic-posts' ); ?></strong>
+					<?php
+					printf(
+						/* translators: 1: indexed post count */
+						esc_html__( 'Indexing unlimited posts — currently %d in the graph.', 'semantic-posts' ),
+						(int) $count
+					);
+					?>
+				</p>
+			</div>
+			<?php
+			return;
+		}
+
+		$class = $locked ? 'notice-warning' : ( $count >= ( $limit * 0.8 ) ? 'notice-info' : 'notice-info' );
+		?>
+		<div class="notice <?php echo esc_attr( $class ); ?>" data-sp-notice="paywall-free-tier">
+			<p>
+				<strong>
+					<?php
+					printf(
+						/* translators: 1: indexed count, 2: free limit */
+						esc_html__( 'Free tier: %1$d / %2$d posts indexed.', 'semantic-posts' ),
+						(int) $count,
+						(int) $limit
+					);
+					?>
+				</strong>
+				<?php if ( $locked ) : ?>
+					<?php esc_html_e( 'Indexing has paused because the free limit was reached. Existing related-post widgets keep working; new posts will not be added until you upgrade.', 'semantic-posts' ); ?>
+				<?php elseif ( $count >= ( $limit * 0.8 ) ) : ?>
+					<?php esc_html_e( 'You are approaching the free tier limit. Upgrade to keep indexing new posts without interruption.', 'semantic-posts' ); ?>
+				<?php else : ?>
+					<?php esc_html_e( 'Upgrade to remove the limit and index every post on the site.', 'semantic-posts' ); ?>
+				<?php endif; ?>
+				<?php if ( '' !== $upgrade ) : ?>
+					&nbsp;
+					<a class="button button-primary" href="<?php echo esc_url( $upgrade ); ?>">
+						<?php esc_html_e( 'Upgrade to Pro', 'semantic-posts' ); ?>
+					</a>
+				<?php endif; ?>
+			</p>
 		</div>
 		<?php
 	}

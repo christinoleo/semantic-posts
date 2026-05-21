@@ -27,6 +27,7 @@ namespace SemanticPosts\Indexing;
 
 use SemanticPosts\Crawler\Crawler;
 use SemanticPosts\Logging;
+use SemanticPosts\Paywall\PaywallGate;
 
 class ColdStartProcessor {
 
@@ -51,25 +52,31 @@ class ColdStartProcessor {
 	/** @var MemoryGuard */
 	private MemoryGuard $memory;
 
+	/** @var PaywallGate */
+	private PaywallGate $gate;
+
 	/**
 	 * @param UnindexedQueue  $queue     Source of next-batch IDs.
 	 * @param EmbedJob        $embed_job Per-post embed runner.
 	 * @param Crawler         $crawler   Graph maintainer (calls insert).
 	 * @param StateRepository $state     Persists cold_start phase + cursor.
 	 * @param MemoryGuard     $memory    Halt signal.
+	 * @param PaywallGate     $gate      Free-tier indexing gate.
 	 */
 	public function __construct(
 		UnindexedQueue $queue,
 		EmbedJob $embed_job,
 		Crawler $crawler,
 		StateRepository $state,
-		MemoryGuard $memory
+		MemoryGuard $memory,
+		PaywallGate $gate
 	) {
 		$this->queue     = $queue;
 		$this->embed_job = $embed_job;
 		$this->crawler   = $crawler;
 		$this->state     = $state;
 		$this->memory    = $memory;
+		$this->gate      = $gate;
 	}
 
 	/**
@@ -162,9 +169,22 @@ class ColdStartProcessor {
 			Logging::info( 'Cold start beginning Phase 1 bootstrap.' );
 		}
 
+		$running_indexed_count = $this->crawler_indexed_count();
+
 		foreach ( $batch as $post_id ) {
 			if ( $this->memory->should_halt() ) {
 				$halted_for_memory = true;
+				break;
+			}
+
+			if ( $this->gate->is_locked( $running_indexed_count ) ) {
+				Logging::info(
+					'Cold start halted by free-tier gate.',
+					array(
+						'indexed_count' => $running_indexed_count,
+						'limit'         => $this->gate->limit(),
+					)
+				);
 				break;
 			}
 
@@ -177,6 +197,7 @@ class ColdStartProcessor {
 			if ( EmbedJob::OUTCOME_SUCCESS === $outcome['outcome'] ) {
 				$this->crawler->insert( $post->ID );
 				++$processed;
+				++$running_indexed_count;
 				// Re-read state so the metric increments (succeeded/retried) +
 				// failed_posts mutations made by EmbedJob / record_success /
 				// mark_post_failed are preserved across this cursor write.

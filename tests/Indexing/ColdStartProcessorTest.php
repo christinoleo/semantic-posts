@@ -21,6 +21,7 @@ use SemanticPosts\Indexing\HashDiffDetector;
 use SemanticPosts\Indexing\MemoryGuard;
 use SemanticPosts\Indexing\RateLimiter;
 use SemanticPosts\Indexing\UnindexedQueue;
+use SemanticPosts\Paywall\PaywallGate;
 
 /** Always-succeeds embedding provider that writes a fixed vector. */
 final class CountingColdProvider implements Provider {
@@ -128,7 +129,7 @@ final class ColdStartProcessorTest extends TestCase {
 		);
 		$embed_job    = new EmbedJob( $provider, $builder, $rate_limiter, $hash, $state, $crawler );
 		$memory       = $memory ?? new MemoryGuard( 256 * 1024 * 1024, static fn(): int => 1024 );
-		$cold_start   = new ColdStartProcessor( $queue, $embed_job, $crawler, $state, $memory );
+		$cold_start   = new ColdStartProcessor( $queue, $embed_job, $crawler, $state, $memory, new PaywallGate() );
 		return array( $cold_start, $state, $provider, $crawler );
 	}
 

@@ -26,6 +26,7 @@ use SemanticPosts\Indexing\EmbedJob;
 use SemanticPosts\Indexing\HashDiffDetector;
 use SemanticPosts\Indexing\MemoryGuard;
 use SemanticPosts\Indexing\RateLimiter;
+use SemanticPosts\Paywall\PaywallGate;
 
 require_once __DIR__ . '/ColdStartProcessorTest.php';
 
@@ -90,7 +91,7 @@ final class ColdStartProcessorStateRaceTest extends TestCase {
 		$crawler      = new Crawler( $neighbors, static fn() => array(), static fn() => array(), 200 );
 		$embed_job    = new EmbedJob( $provider, $builder, $rate_limiter, $hash, $state, $crawler );
 		$memory       = new MemoryGuard( 256 * 1024 * 1024, static fn(): int => 1024 );
-		$cold         = new ColdStartProcessor( $queue, $embed_job, $crawler, $state, $memory );
+		$cold         = new ColdStartProcessor( $queue, $embed_job, $crawler, $state, $memory, new PaywallGate() );
 
 		$result = $cold->run_batch();
 

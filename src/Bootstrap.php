@@ -35,6 +35,7 @@ use SemanticPosts\Lifecycle\BackupFilter;
 use SemanticPosts\Observability\EVRegistry;
 use SemanticPosts\Observability\ObservabilityPanel;
 use SemanticPosts\Observability\StateMetrics;
+use SemanticPosts\Paywall\PaywallGate;
 use SemanticPosts\Ranking\ModeFactory;
 use SemanticPosts\Render\ContentFilter;
 use SemanticPosts\Render\FrontendAssets;
@@ -131,7 +132,8 @@ final class Bootstrap {
 		$dirty_queue     = new DirtyQueue();
 		$memory_guard    = new MemoryGuard();
 		$unindexed_queue = new UnindexedQueue();
-		$cold_start      = new ColdStartProcessor( $unindexed_queue, $embed_job, $crawler, $state, $memory_guard );
+		$paywall_gate    = new PaywallGate();
+		$cold_start      = new ColdStartProcessor( $unindexed_queue, $embed_job, $crawler, $state, $memory_guard, $paywall_gate );
 
 		// TB-14 verification.
 		$verification   = new VerificationPass(
@@ -162,7 +164,7 @@ final class Bootstrap {
 		$wiper         = new Wiper( $state );
 		$ev_registry   = new EVRegistry( $settings );
 		$panel         = new ObservabilityPanel( $metrics, $state, $unindexed_queue, $key_storage, $ev_registry );
-		$page          = new SettingsPage( $settings, $key_storage, $panel );
+		$page          = new SettingsPage( $settings, $key_storage, $panel, $paywall_gate, $crawler );
 		$ajax          = new AjaxHandler(
 			$settings,
 			$estimator,
