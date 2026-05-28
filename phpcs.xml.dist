@@ -49,6 +49,9 @@
                 <element value="semantic_posts"/>
                 <element value="SEMANTIC_POSTS"/>
                 <element value="SemanticPosts"/>
+                <!-- Freemius SDK integration identifier: the `sp_fs()` accessor,
+                     its `$sp_fs` instance global, and the `sp_fs_loaded` hook. -->
+                <element value="sp_fs"/>
             </property>
         </properties>
     </rule>

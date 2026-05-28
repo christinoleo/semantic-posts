@@ -37,6 +37,11 @@ if ( file_exists( $semantic_posts_autoload ) ) {
  * possession of any secret.
  */
 if ( ! function_exists( 'sp_fs' ) && ! ( defined( 'SEMANTIC_POSTS_BYPASS_FREEMIUS' ) && SEMANTIC_POSTS_BYPASS_FREEMIUS ) ) {
+	/**
+	 * Lazily boots the Freemius SDK and returns the plugin's Freemius instance.
+	 *
+	 * @return \Freemius|null Freemius instance, or null when the SDK is absent.
+	 */
 	function sp_fs() {
 		global $sp_fs;
 		if ( ! isset( $sp_fs ) ) {
@@ -47,10 +52,10 @@ if ( ! function_exists( 'sp_fs' ) && ! ( defined( 'SEMANTIC_POSTS_BYPASS_FREEMIU
 			require_once $freemius_start;
 			$sp_fs = fs_dynamic_init(
 				array(
-					'id'             => '30197',
-					'slug'           => 'semantic-posts',
-					'type'           => 'plugin',
-					'public_key'     => 'pk_67c2047c0f13ef4399650e5bf10b9',
+					'id'              => '30197',
+					'slug'            => 'semantic-posts',
+					'type'            => 'plugin',
+					'public_key'      => 'pk_67c2047c0f13ef4399650e5bf10b9',
 					// is_premium: true marks this codebase as already containing
 					// the Pro features (gated via `if (is_paying())` checks). The
 					// free tier is enforced by our own PaywallGate, not by
@@ -59,21 +64,21 @@ if ( ! function_exists( 'sp_fs' ) && ! ( defined( 'SEMANTIC_POSTS_BYPASS_FREEMIU
 					// otherwise tries to fetch a separate zip from Freemius's
 					// deployment system (which we don't use — distribution is
 					// via GitHub Releases).
-					'is_premium'     => true,
+					'is_premium'      => true,
 					// Without a paid plan the plugin still functions (free tier
 					// gating is our responsibility, not Freemius's).
 					'is_premium_only' => false,
-					'has_addons'     => false,
-					'has_paid_plans' => true,
+					'has_addons'      => false,
+					'has_paid_plans'  => true,
 					// anonymous_mode: don't force the opt-in modal on activation;
 					// the plugin works immediately and users can opt in to analytics
 					// later from Settings → SemanticPosts.
-					'anonymous_mode' => true,
-					'menu'           => array(
+					'anonymous_mode'  => true,
+					'menu'            => array(
 						'slug'    => 'semantic-posts',
 						'support' => false,
 					),
-					'is_live'        => true,
+					'is_live'         => true,
 				)
 			);
 		}
